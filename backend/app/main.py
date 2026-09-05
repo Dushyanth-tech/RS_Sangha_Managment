@@ -6,6 +6,7 @@ from app.dbconnection import get_db, engine, Base
 from app.auth import create_access_token, hash_password, verify_password, get_current_user
 from sqlalchemy import or_,func
 from sqlalchemy.orm import aliased, Session
+from datetime import datetime, timezone
 
 app = FastAPI()
 
@@ -292,10 +293,10 @@ def get_members_for_admin(
             detail="User not found."
         )
 
-    if current_user.role != "superadmin":
+    if current_user.role not in ("admin", "superadmin"):
         raise HTTPException(
             status_code=403,
-            detail="Only superadmin can access this."
+            detail="Only admin and superadmin can access this."
         )
 
     members = (
@@ -307,7 +308,7 @@ def get_members_for_admin(
     return [
         {
             "id": member.id,
-            "name": member.name,
+            "name": member.fullname,
             "email": member.email,
             "phone": member.phone,
             "address": member.address,
@@ -333,10 +334,10 @@ def get_unassigned_sanghas(
             detail="User not found."
         )
 
-    if current_user.role != "superadmin":
+    if current_user.role not in ("admin", "superadmin"):
         raise HTTPException(
             status_code=403,
-            detail="Only superadmin can access this."
+            detail="Only admin and superadmin can access this."
         )
 
     sanghas = (
@@ -372,10 +373,10 @@ def create_admin_request(
             detail="User not found."
         )
 
-    if current_user.role != "superadmin":
+    if current_user.role not in ("admin", "superadmin"):
         raise HTTPException(
             status_code=403,
-            detail="Only superadmin can create an admin request."
+            detail="Only admin and superadmin can create an admin request."
         )
 
     # Find Sangha
@@ -446,7 +447,7 @@ def create_admin_request(
         admin_id=current_user.id,
         requester_id=member.id,
 
-        subadmin_name=member.name,
+        subadmin_name=member.fullname,
         subadmin_email=member.email,
         subadmin_phone=member.phone or "",
 
@@ -474,7 +475,7 @@ def create_admin_request(
         "request": {
             "id": new_request.id,
             "sangha_name": sangha.name,
-            "candidate_name": member.name,
+            "candidate_name": member.fullname,
             "candidate_email": member.email,
             "candidate_phone": member.phone,
             "message": new_request.message,
@@ -499,10 +500,10 @@ def get_admin_requests(
             detail="User not found."
         )
 
-    if current_user.role != "superadmin":
+    if current_user.role not in ("admin", "superadmin"):
         raise HTTPException(
             status_code=403,
-            detail="Only superadmin can view admin requests."
+            detail="Only admin and superadmin can view admin requests."
         )
 
     requests = (
@@ -525,12 +526,20 @@ def get_admin_requests(
             .first()
         )
 
+        requesting_admin = (
+            db.query(User)
+            .filter(User.id == request.admin_id)
+            .first()
+        )
+
         result.append({
             "id": request.id,
+            "sangha_id": request.sangha_id,
             "sangha_name": sangha.name if sangha else "-",
             "candidate_name": request.subadmin_name,
             "candidate_email": request.subadmin_email,
             "candidate_phone": request.subadmin_phone,
+            "requested_by": requesting_admin.fullname if requesting_admin else "-",
             "message": request.message,
             "status": (
                 request.status.value
@@ -541,6 +550,123 @@ def get_admin_requests(
         })
 
     return result
+
+
+@app.patch("/admin-requests/{request_id}/approve")
+def approve_admin_request(
+    request_id: int,
+    db=Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    current_user = (
+        db.query(User)
+        .filter(User.id == int(current_user_id))
+        .first()
+    )
+
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role != "superadmin":
+        raise HTTPException(
+            status_code=403,
+            detail="Only superadmin can approve admin requests."
+        )
+
+    request_row = (
+        db.query(SubAdminRequest)
+        .filter(SubAdminRequest.id == request_id)
+        .first()
+    )
+
+    if not request_row:
+        raise HTTPException(status_code=404, detail="Request not found.")
+
+    if request_row.status != RequestStatus.pending:
+        raise HTTPException(status_code=400, detail="Request has already been reviewed.")
+
+    sangha = (
+        db.query(Sanghas)
+        .filter(Sanghas.id == request_row.sangha_id)
+        .first()
+    )
+    if not sangha:
+        raise HTTPException(status_code=404, detail="Sangha no longer exists.")
+    if sangha.admin_id is not None:
+        raise HTTPException(status_code=400, detail="This Sangha already has an admin.")
+
+    member = (
+        db.query(User)
+        .filter(User.id == request_row.requester_id)
+        .first()
+    )
+    if not member:
+        raise HTTPException(status_code=404, detail="Candidate member no longer exists.")
+
+    # Promote the member and assign them as the sangha's admin
+    member.role = "admin"
+    sangha.admin_id = member.id
+
+    request_row.status = RequestStatus.approved
+    request_row.reviewed_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(request_row)
+
+    return {
+        "id": request_row.id,
+        "status": request_row.status.value,
+        "detail": "Request approved. Member promoted to admin."
+    }
+
+
+@app.patch("/admin-requests/{request_id}/reject")
+def reject_admin_request(
+    request_id: int,
+    payload: dict,  # {"reason": str} — optional
+    db=Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    current_user = (
+        db.query(User)
+        .filter(User.id == int(current_user_id))
+        .first()
+    )
+
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role != "superadmin":
+        raise HTTPException(
+            status_code=403,
+            detail="Only superadmin can reject admin requests."
+        )
+
+    request_row = (
+        db.query(SubAdminRequest)
+        .filter(SubAdminRequest.id == request_id)
+        .first()
+    )
+
+    if not request_row:
+        raise HTTPException(status_code=404, detail="Request not found.")
+
+    if request_row.status != RequestStatus.pending:
+        raise HTTPException(status_code=400, detail="Request has already been reviewed.")
+
+    request_row.status = RequestStatus.rejected
+    request_row.rejection_reason = (payload or {}).get("reason")
+    request_row.reviewed_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(request_row)
+
+    return {
+        "id": request_row.id,
+        "status": request_row.status.value,
+        "rejection_reason": request_row.rejection_reason,
+        "detail": "Request rejected."
+    }
 
 
 Base.metadata.create_all(bind=engine)

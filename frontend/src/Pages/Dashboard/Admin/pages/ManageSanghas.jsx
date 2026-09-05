@@ -64,7 +64,7 @@ export default function ManageSanghas() {
           + Create Sangha
         </button>
       </div>
-
+    <div className="sa-scroll-table">
       <DataTable
         columns={[
           { key: "name", label: "Sangha Name" },
@@ -80,7 +80,7 @@ export default function ManageSanghas() {
           </button>
         )}
       />
-
+  </div>
       {showCreateModal && (
         <CreateSanghaModal onClose={() => setShowCreateModal(false)} onCreated={handleCreated} />
       )}

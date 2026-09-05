@@ -77,3 +77,16 @@
 
   margin-top: 20px;
 }
+
+/* ---------- Scrollable Sanghas table ---------- */
+.sa-scroll-table .sa-table-wrapper {
+  max-height: 480px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.sa-scroll-table .sa-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}

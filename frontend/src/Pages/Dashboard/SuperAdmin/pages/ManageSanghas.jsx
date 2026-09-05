@@ -66,30 +66,31 @@ export default function ManageSanghas() {
           + Create Sangha
         </button>
       </div>
-
-      <DataTable
-        columns={[
-          { key: "name", label: "Sangha Name" },
-          { key: "code", label: "Code" },
-          { key: "admin", label: "Admin", render: (row) => row.admin_name || "-" },
-          { key: "subadmin", label: "Subadmin", render: (row) => row.subadmin_name || "-" },
-          { key: "members", label: "Members", render: (row) => row.membersCount ?? 0 },
-        ]}
-        rows={sanghas}
-        emptyText={fetching ? "Loading..." : "No records found"}
-        actions={(row) => (
-          <>
-            <button
-              className="sa-btn-outline"
-              style={{ marginRight: "0.5rem" }}
-              onClick={() => handleOpenMembersModal(row)}
-            >
-              Add Members
-            </button>
-            <button className="sa-btn-outline">Edit</button>
-          </>
-        )}
-      />
+        <div className="sa-scroll-table">
+        <DataTable
+          columns={[
+            { key: "name", label: "Sangha Name" },
+            { key: "code", label: "Code" },
+            { key: "admin", label: "Admin", render: (row) => row.admin_name || "-" },
+            { key: "subadmin", label: "Subadmin", render: (row) => row.subadmin_name || "-" },
+            { key: "members", label: "Members", render: (row) => row.membersCount ?? 0 },
+          ]}
+          rows={sanghas}
+          emptyText={fetching ? "Loading..." : "No records found"}
+          actions={(row) => (
+            <>
+              <button
+                className="sa-btn-outline"
+                style={{ marginRight: "0.5rem" }}
+                onClick={() => handleOpenMembersModal(row)}
+              >
+                Add Members
+              </button>
+              <button className="sa-btn-outline">Edit</button>
+            </>
+          )}
+        />
+      </div>
 
       {showCreateModal && (
         <CreateSanghaModal
