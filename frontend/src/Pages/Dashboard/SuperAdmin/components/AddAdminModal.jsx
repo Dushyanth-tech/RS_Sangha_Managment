@@ -22,12 +22,17 @@ export default function AddAdminModal({ onClose, onAssigned }) {
 
   const debounceRef = useRef(null);
 
+  const justSelectedRef = useRef(false);
+
   const token = () => localStorage.getItem("access_token");
 
   // Search members
   useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      return; // skip the search triggered by autofilling the input
     }
 
     if (!query.trim()) {
@@ -38,21 +43,13 @@ export default function AddAdminModal({ onClose, onAssigned }) {
     debounceRef.current = setTimeout(async () => {
       try {
         setSearching(true);
-
         const res = await axios.get(`${API_BASE}/users/search`, {
-          params: {
-            q: query,
-            role: "member",
-          },
-          headers: {
-            Authorization: `Bearer ${token()}`,
-          },
+          params: { q: query, role: "member,admin" },
+          headers: { Authorization: `Bearer ${token()}` },
         });
-
         setResults(res.data);
       } catch (error) {
         console.error("Error searching members:", error);
-
         setError(error.response?.data?.detail || "Failed to search members.");
       } finally {
         setSearching(false);
@@ -61,6 +58,15 @@ export default function AddAdminModal({ onClose, onAssigned }) {
 
     return () => clearTimeout(debounceRef.current);
   }, [query]);
+
+  // Select member
+  const handleSelectMember = (member) => {
+    justSelectedRef.current = true; // suppress the next search triggered below
+    setSelectedMember(member);
+    setQuery(member.name); // autofill input, like picking from a <select>
+    setResults([]); // close the dropdown
+    setError("");
+  };
 
   // Fetch unassigned Sanghas
   useEffect(() => {
@@ -84,12 +90,6 @@ export default function AddAdminModal({ onClose, onAssigned }) {
 
     fetchSanghas();
   }, []);
-
-  // Select member
-  const handleSelectMember = (member) => {
-    setSelectedMember(member);
-    setError("");
-  };
 
   // Make selected member admin
   const handleMakeAdmin = async () => {
@@ -145,17 +145,28 @@ export default function AddAdminModal({ onClose, onAssigned }) {
         {/* Body */}
         <div className="sa-modal__body">
           {/* Search */}
-          <label htmlFor="member" style={{marginBottom: "1rem",fontWeight: "bold",fontSize: "0.8rem",color: "#898989"}}>
-              Search Member Name
-            </label>
+          <label
+            htmlFor="member"
+            style={{
+              marginBottom: "1rem",
+              fontWeight: "bold",
+              fontSize: "0.8rem",
+              color: "#898989",
+            }}
+          >
+            Search Member Name
+          </label>
           <input
             type="text"
             className="sa-input"
             placeholder="Search member by name..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedMember(null);
+            }}
             autoFocus
-            style={{margingTop: "1rem"}}
+            style={{ margingTop: "1rem" }}
           />
           {/* Error */}
           {error && <div className="sa-error">{error}</div>}
@@ -169,7 +180,7 @@ export default function AddAdminModal({ onClose, onAssigned }) {
           )} */}
 
           {/* Search results */}
-          {query.trim() && (
+          {query.trim() && !selectedMember && (
             <div className="sa-table-wrapper" style={{ marginTop: "1rem" }}>
               <table className="sa-table">
                 <thead>
@@ -217,7 +228,7 @@ export default function AddAdminModal({ onClose, onAssigned }) {
           )}
           {/* Sangha */}
           <div className="rs-field">
-            <label htmlFor="sangha" style={{marginTop: "1rem"}}>
+            <label htmlFor="sangha" style={{ marginTop: "1rem" }}>
               Sangha Name
             </label>
 

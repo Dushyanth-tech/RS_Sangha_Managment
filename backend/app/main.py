@@ -110,10 +110,14 @@ def create_sangha(
 
 @app.get("/sanghas")
 def list_sanghas(db=Depends(get_db), current_user_id=Depends(get_current_user)):
+    current_user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
     admin = aliased(User)
     subadmin = aliased(User)
 
-    rows = (
+    query = (
         db.query(
             Sanghas,
             admin.fullname.label("admin_name"),
@@ -121,8 +125,13 @@ def list_sanghas(db=Depends(get_db), current_user_id=Depends(get_current_user)):
         )
         .outerjoin(admin, Sanghas.admin_id == admin.id)
         .outerjoin(subadmin, Sanghas.subadmin_id == subadmin.id)
-        .all()
     )
+
+    if current_user.role == "admin":
+        query = query.filter(Sanghas.admin_id == current_user.id)
+    # superadmin: no filter, sees all
+
+    rows = query.all()
 
     return [
         {
@@ -137,7 +146,6 @@ def list_sanghas(db=Depends(get_db), current_user_id=Depends(get_current_user)):
         }
         for s, admin_name, subadmin_name in rows
     ]
-
 
 @app.post("/sanghas/{sangha_id}/members")
 def add_member(
@@ -171,7 +179,24 @@ def search_members(
     db=Depends(get_db),
     current_user_id=Depends(get_current_user),
 ):
-    query = db.query(User).filter(User.role == role)
+    current_user = (
+        db.query(User)
+        .filter(User.id == int(current_user_id))
+        .first()
+    )
+
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role not in ("admin", "superadmin"):
+        raise HTTPException(
+            status_code=403,
+            detail="Only admin and superadmin can search users."
+        )
+
+    roles = [r.strip() for r in role.split(",") if r.strip()]
+
+    query = db.query(User).filter(User.role.in_(roles))
 
     if q:
         like = f"%{q}%"
@@ -192,6 +217,7 @@ def search_members(
             "email": u.email,
             "phone": u.phone,
             "isActive": u.isActive,
+            "role": u.role,
         }
         for u in results
     ]
@@ -230,19 +256,31 @@ def add_admin(
     db=Depends(get_db),
     current_user_id=Depends(get_current_user),
 ):
-    # Find selected member
+    current_user = (
+        db.query(User)
+        .filter(User.id == int(current_user_id))
+        .first()
+    )
+
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role != "superadmin":
+        raise HTTPException(
+            status_code=403,
+            detail="Only superadmin can assign admins."
+        )
+
+    # Find selected member/admin
     member = db.query(User).filter(
         User.id == payload.member_id
     ).first()
 
     if not member:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
+        raise HTTPException(status_code=404, detail="User not found")
 
-    # User must currently be a member
-    if member.role != "member":
+    # User must be a member OR an existing admin (to allow multi-sangha admins)
+    if member.role not in ("member", "admin"):
         raise HTTPException(
             status_code=400,
             detail="User is not eligible for promotion"
@@ -254,12 +292,8 @@ def add_admin(
     ).first()
 
     if not sangha:
-        raise HTTPException(
-            status_code=404,
-            detail="Sangha not found"
-        )
+        raise HTTPException(status_code=404, detail="Sangha not found")
 
-    # Make sure Sangha doesn't already have an admin
     if sangha.admin_id is not None:
         raise HTTPException(
             status_code=400,
@@ -271,11 +305,8 @@ def add_admin(
     # --------------------------------
 
     member.role = "admin"
-
-    # If your User model has sangha_id,
-    # keep this if an admin should also belong
-    # to this Sangha.
-    member.sangha_id = sangha.id
+    # No member.sangha_id assignment — an admin's sanghas are derived from
+    # Sanghas.admin_id (one-to-many), not stored on the User row.
 
     # --------------------------------
     # UPDATE SANGHAS TABLE
@@ -283,9 +314,7 @@ def add_admin(
 
     sangha.admin_id = member.id
 
-    # Save both changes
     db.commit()
-
     db.refresh(member)
     db.refresh(sangha)
 
@@ -300,7 +329,6 @@ def add_admin(
         "sanghaName": sangha.name,
         "sanghaAdminId": sangha.admin_id,
     }
-
 
 @app.delete("/admins/{admin_id}")
 def remove_admin(
@@ -540,49 +568,24 @@ def get_admin_requests(
     db: Session = Depends(get_db),
     current_user_id=Depends(get_current_user)
 ):
-    current_user = (
-        db.query(User)
-        .filter(User.id == int(current_user_id))
-        .first()
-    )
-
+    current_user = db.query(User).filter(User.id == int(current_user_id)).first()
     if not current_user:
-        raise HTTPException(
-            status_code=401,
-            detail="User not found."
-        )
-
+        raise HTTPException(status_code=401, detail="User not found.")
     if current_user.role not in ("admin", "superadmin"):
-        raise HTTPException(
-            status_code=403,
-            detail="Only admin and superadmin can view admin requests."
-        )
+        raise HTTPException(status_code=403, detail="Only admin and superadmin can view admin requests.")
 
-    requests = (
-        db.query(SubAdminRequest)
-        .order_by(
-            SubAdminRequest.submitted_at.desc()
-        )
-        .all()
-    )
+    query = db.query(SubAdminRequest).order_by(SubAdminRequest.submitted_at.desc())
+
+    if current_user.role == "admin":
+        query = query.filter(SubAdminRequest.admin_id == current_user.id)
+    # superadmin: sees all requests
+
+    requests = query.all()
 
     result = []
-
     for request in requests:
-
-        sangha = (
-            db.query(Sanghas)
-            .filter(
-                Sanghas.id == request.sangha_id
-            )
-            .first()
-        )
-
-        requesting_admin = (
-            db.query(User)
-            .filter(User.id == request.admin_id)
-            .first()
-        )
+        sangha = db.query(Sanghas).filter(Sanghas.id == request.sangha_id).first()
+        requesting_admin = db.query(User).filter(User.id == request.admin_id).first()
 
         result.append({
             "id": request.id,
@@ -593,16 +596,11 @@ def get_admin_requests(
             "candidate_phone": request.subadmin_phone,
             "requested_by": requesting_admin.fullname if requesting_admin else "-",
             "message": request.message,
-            "status": (
-                request.status.value
-                if hasattr(request.status, "value")
-                else request.status
-            ),
+            "status": request.status.value if hasattr(request.status, "value") else request.status,
             "rejection_reason": request.rejection_reason
         })
 
     return result
-
 
 @app.patch("/admin-requests/{request_id}/approve")
 def approve_admin_request(
@@ -720,5 +718,36 @@ def reject_admin_request(
         "detail": "Request rejected."
     }
 
+@app.get("/admin-requests/pending-count")
+def get_pending_admin_requests_count(
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user)
+):
+    current_user = (
+        db.query(User)
+        .filter(User.id == int(current_user_id))
+        .first()
+    )
+
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role not in ("admin", "superadmin"):
+        raise HTTPException(
+            status_code=403,
+            detail="Only admin and superadmin can view admin requests."
+        )
+
+    query = db.query(SubAdminRequest).filter(
+        SubAdminRequest.status == RequestStatus.pending
+    )
+
+    if current_user.role == "admin":
+        query = query.filter(SubAdminRequest.admin_id == current_user.id)
+    # superadmin: no admin_id filter, sees global pending count
+
+    count = query.count()
+
+    return {"pending_count": count}
 
 Base.metadata.create_all(bind=engine)
