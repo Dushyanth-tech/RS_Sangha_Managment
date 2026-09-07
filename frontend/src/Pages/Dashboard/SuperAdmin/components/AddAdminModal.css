@@ -1,57 +1,99 @@
-/* dashboard.css */
+/* =========================================================
+   DASHBOARD.CSS
+   ========================================================= */
+
+
+/* =========================================================
+   1. CSS VARIABLES
+   ========================================================= */
 
 :root {
+  /* Colors */
   --pink-900: #4a0e2e;
   --pink-700: #8a1245;
   --pink-600: #a8194f;
   --pink-500: #c62368;
+
   --blush-100: #fdeef4;
   --blush-50: #fbf9f7;
+
   --ink: #1c1017;
   --muted: #7c6b73;
   --line: #ece4e7;
+
+  /* Radius */
   --radius-lg: 18px;
   --radius-md: 10px;
+
+  /* Fonts */
   --font-body: "Inter", sans-serif;
   --font-display: "Fraunces", serif;
 }
 
-/* ---------- Page shell ---------- */
+
+/* =========================================================
+   2. PAGE
+   ========================================================= */
+
 .sa-page {
-  font-family: var(--font-body);
-  color: var(--ink);
-  padding: 2rem;
-  background: var(--blush-50);
   min-height: 100%;
+
+  padding: 2rem;
+
+  background: var(--blush-50);
+
+  color: var(--ink);
+  font-family: var(--font-body);
 }
+
+
+/* =========================================================
+   3. SECTION HEADER
+   ========================================================= */
 
 .sa-section__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   margin-bottom: 1.5rem;
 }
 
 .sa-section__title {
+  margin: 0;
+
+  color: var(--pink-900);
+
   font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--pink-900);
-  margin: 0;
 }
 
-/* ---------- Buttons ---------- */
+
+/* =========================================================
+   4. BUTTONS
+   ========================================================= */
+
+/* Primary button */
+
 .sa-btn-primary {
-  background: var(--pink-600);
-  color: #fff;
+  padding: 0.6rem 1.2rem;
+
   border: none;
   border-radius: var(--radius-md);
-  padding: 0.6rem 1.2rem;
+
+  background: var(--pink-600);
+  color: #fff;
+
   font-family: var(--font-body);
-  font-weight: 600;
   font-size: 0.9rem;
+  font-weight: 600;
+
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.05s ease;
+
+  transition:
+    background 0.15s ease,
+    transform 0.05s ease;
 }
 
 .sa-btn-primary:hover {
@@ -67,109 +109,176 @@
   cursor: not-allowed;
 }
 
+
+/* Outline button */
+
 .sa-btn-outline {
-  background: transparent;
-  color: var(--pink-700);
+  padding: 0.4rem 0.9rem;
+
   border: 1px solid var(--pink-500);
   border-radius: var(--radius-md);
-  padding: 0.4rem 0.9rem;
+
+  background: transparent;
+  color: var(--pink-700);
+
   font-family: var(--font-body);
-  font-weight: 500;
   font-size: 0.85rem;
+  font-weight: 500;
+
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .sa-btn-outline:hover {
   background: var(--blush-100);
 }
 
-/* ---------- Table ---------- */
+
+/* =========================================================
+   5. TABLE
+   ========================================================= */
+
 .sa-table-wrapper {
+  overflow: hidden;
+
   background: #fff;
+
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  overflow: hidden;
 }
 
 .sa-table {
   width: 100%;
+
   border-collapse: collapse;
+
   font-size: 0.9rem;
 }
+
+
+/* Table header */
 
 .sa-table thead {
   background: var(--blush-100);
 }
 
 .sa-table th {
-  text-align: left;
   padding: 0.85rem 1.1rem;
-  color: var(--pink-900);
-  font-weight: 600;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+
   border-bottom: 1px solid var(--line);
+
+  color: var(--pink-900);
+
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
+
+
+/* Table body */
 
 .sa-table td {
   padding: 0.85rem 1.1rem;
+
   border-bottom: 1px solid var(--line);
+
   color: var(--ink);
 }
+
+
+/* Remove border from last row */
 
 .sa-table tbody tr:last-child td {
   border-bottom: none;
 }
 
+
+/* Row hover */
+
 .sa-table tbody tr:hover {
   background: var(--blush-50);
 }
 
+
+/* Actions column */
+
 .sa-table__actions-col {
-  white-space: nowrap;
   width: 1%;
+
+  white-space: nowrap;
 }
 
+
+/* Empty state */
+
 .sa-table__empty {
-  text-align: center;
   padding: 2rem;
+
   color: var(--muted);
+
+  text-align: center;
   font-style: italic;
 }
 
-/* ---------- Badges ---------- */
+
+/* =========================================================
+   6. BADGES
+   ========================================================= */
+
 .sa-badge {
   display: inline-block;
+
   padding: 0.25rem 0.7rem;
+
   border-radius: 999px;
+
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: capitalize;
 }
+
+
+/* Approved */
 
 .sa-badge--approved {
   background: #e5f6ec;
   color: #1e7a44;
 }
 
+
+/* Rejected */
+
 .sa-badge--rejected {
   background: #fbe9ee;
   color: var(--pink-700);
 }
 
-/* ---------- Inputs ---------- */
+
+/* =========================================================
+   7. INPUTS
+   ========================================================= */
+
 .sa-input {
   width: 100%;
+
   padding: 0.6rem 0.9rem;
+
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
+
+  outline: none;
+
+  background: #fff;
+  color: var(--ink);
+
   font-family: var(--font-body);
   font-size: 0.9rem;
-  color: var(--ink);
-  background: #fff;
-  outline: none;
+
   transition: border-color 0.15s ease;
 }
 
@@ -177,74 +286,189 @@
   border-color: var(--pink-500);
 }
 
-/* ---------- Modal ---------- */
+
+/* =========================================================
+   8. MODAL OVERLAY
+   ========================================================= */
+
 .sa-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(28, 16, 23, 0.45);
+
+  z-index: 1000;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+
+  background: rgba(28, 16, 23, 0.45);
 }
 
+
+/* =========================================================
+   9. MODAL
+   ========================================================= */
+
 .sa-modal {
-  background: #fff;
-  border-radius: var(--radius-lg);
   width: 100%;
   max-width: 520px;
   max-height: 85vh;
+
   overflow-y: auto;
+
+  background: #fff;
+
+  border-radius: var(--radius-lg);
+
   box-shadow: 0 20px 60px rgba(74, 14, 46, 0.25);
 }
+
+
+/* =========================================================
+   10. MODAL HEADER
+   ========================================================= */
 
 .sa-modal__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   padding: 1.25rem 1.5rem;
+
   border-bottom: 1px solid var(--line);
 }
 
 .sa-modal__header h3 {
+  margin: 0;
+
+  color: var(--pink-900);
+
   font-family: var(--font-display);
   font-size: 1.15rem;
-  color: var(--pink-900);
-  margin: 0;
 }
 
+
+/* Close button */
+
 .sa-modal__close {
-  background: none;
+  padding: 0;
+
   border: none;
-  font-size: 1.4rem;
+
+  background: none;
   color: var(--muted);
-  cursor: pointer;
+
+  font-size: 1.4rem;
   line-height: 1;
+
+  cursor: pointer;
 }
 
 .sa-modal__close:hover {
   color: var(--pink-700);
 }
 
+
+/* =========================================================
+   11. MODAL BODY
+   ========================================================= */
+
 .sa-modal__body {
   padding: 1.5rem;
 }
 
-/* Responsive */
+
+/* =========================================================
+   12. MODAL FOOTER
+   ========================================================= */
+
+.sa-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+
+  border-top: 1px solid var(--line);
+}
+
+
+/* =========================================================
+   13. SELECTED MEMBER
+   ========================================================= */
+
+.selected-member {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+
+  background: var(--blush-50);
+
+  color: var(--ink);
+
+  font-size: 0.9rem;
+}
+
+
+/* =========================================================
+   14. SELECTED TABLE ROW
+   ========================================================= */
+
+.selected-row {
+  background: var(--blush-100);
+}
+
+.selected-row td {
+  font-weight: 500;
+}
+
+
+/* =========================================================
+   15. ERROR MESSAGE
+   ========================================================= */
+
+.sa-error {
+  margin-top: 0.5rem;
+
+  color: var(--pink-700);
+
+  font-size: 0.85rem;
+}
+
+
+/* =========================================================
+   16. RESPONSIVE
+   ========================================================= */
+
 @media (max-width: 640px) {
+  /* Page */
+
   .sa-page {
     padding: 1.25rem;
   }
 
+
+  /* Section header */
+
   .sa-section__header {
     flex-direction: column;
     align-items: flex-start;
+
     gap: 0.75rem;
   }
+
+
+  /* Modal */
 
   .sa-modal {
     max-width: 92vw;
   }
+
+
+  /* Table */
 
   .sa-table {
     font-size: 0.8rem;

@@ -418,6 +418,21 @@
 }
 
 .sa-table tbody tr:last-child td { border-bottom: none; }
+
+
+/* ---------- Scrollable table (used on Sanghas pages, both dashboards) ---------- */
+.sa-scroll-table .sa-table-wrapper {
+  max-height: 480px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.sa-scroll-table .sa-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
 .sa-table tbody tr:hover { background: var(--blush-50); }
 
 .sa-table__actions-col { white-space: nowrap; }

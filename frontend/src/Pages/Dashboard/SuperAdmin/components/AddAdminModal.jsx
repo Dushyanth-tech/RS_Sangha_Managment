@@ -5,16 +5,30 @@ import "./AddAdminModal.css";
 const API_BASE = "http://localhost:8000";
 
 export default function AddAdminModal({ onClose, onAssigned }) {
+  const [sanghas, setSanghas] = useState([]);
+  const [sanghaId, setSanghaId] = useState("");
+  const [loadingSanghas, setLoadingSanghas] = useState(true);
+
+  const [error, setError] = useState("");
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  const [assigningId, setAssigningId] = useState(null);
+
+  // Selected member
+  const [selectedMember, setSelectedMember] = useState(null);
+
+  const [assigning, setAssigning] = useState(false);
+
   const debounceRef = useRef(null);
 
   const token = () => localStorage.getItem("access_token");
 
+  // Search members
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
 
     if (!query.trim()) {
       setResults([]);
@@ -24,13 +38,22 @@ export default function AddAdminModal({ onClose, onAssigned }) {
     debounceRef.current = setTimeout(async () => {
       try {
         setSearching(true);
+
         const res = await axios.get(`${API_BASE}/users/search`, {
-          params: { q: query, role: "member" },
-          headers: { Authorization: `Bearer ${token()}` },
+          params: {
+            q: query,
+            role: "member",
+          },
+          headers: {
+            Authorization: `Bearer ${token()}`,
+          },
         });
+
         setResults(res.data);
       } catch (error) {
         console.error("Error searching members:", error);
+
+        setError(error.response?.data?.detail || "Failed to search members.");
       } finally {
         setSearching(false);
       }
@@ -39,34 +62,92 @@ export default function AddAdminModal({ onClose, onAssigned }) {
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
-  const handleMakeAdmin = async (member) => {
+  // Fetch unassigned Sanghas
+  useEffect(() => {
+    const fetchSanghas = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/sanghas/unassigned`, {
+          headers: {
+            Authorization: `Bearer ${token()}`,
+          },
+        });
+
+        setSanghas(res.data);
+      } catch (err) {
+        console.error(err);
+
+        setError(err.response?.data?.detail || "Failed to load Sanghas.");
+      } finally {
+        setLoadingSanghas(false);
+      }
+    };
+
+    fetchSanghas();
+  }, []);
+
+  // Select member
+  const handleSelectMember = (member) => {
+    setSelectedMember(member);
+    setError("");
+  };
+
+  // Make selected member admin
+  const handleMakeAdmin = async () => {
+    if (!selectedMember) {
+      setError("Please select a member.");
+      return;
+    }
+
+    if (!sanghaId) {
+      setError("Please select a Sangha.");
+      return;
+    }
+
     try {
-      setAssigningId(member.id);
-      await axios.post(
+      setAssigning(true);
+      setError("");
+
+      const res = await axios.post(
         `${API_BASE}/admins`,
-        { member_id: member.id },
-        { headers: { Authorization: `Bearer ${token()}` } }
+        {
+          member_id: selectedMember.id,
+          sangha_id: Number(sanghaId),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token()}`,
+          },
+        },
       );
-      onAssigned(member);
+
+      onAssigned(res.data);
     } catch (error) {
       console.error("Error promoting member:", error);
-      if (error.response) console.log("Backend error:", error.response.data);
+
+      setError(error.response?.data?.detail || "Failed to make member admin.");
     } finally {
-      setAssigningId(null);
+      setAssigning(false);
     }
   };
 
   return (
     <div className="sa-modal-overlay">
       <div className="sa-modal">
+        {/* Header */}
         <div className="sa-modal__header">
           <h3>Add Admin</h3>
+
           <button className="sa-modal__close" onClick={onClose}>
             &times;
           </button>
         </div>
 
+        {/* Body */}
         <div className="sa-modal__body">
+          {/* Search */}
+          <label htmlFor="member" style={{marginBottom: "1rem",fontWeight: "bold",fontSize: "0.8rem",color: "#898989"}}>
+              Search Member Name
+            </label>
           <input
             type="text"
             className="sa-input"
@@ -74,55 +155,107 @@ export default function AddAdminModal({ onClose, onAssigned }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
+            style={{margingTop: "1rem"}}
           />
+          {/* Error */}
+          {error && <div className="sa-error">{error}</div>}
 
-          <div className="sa-table-wrapper" style={{ marginTop: "1rem" }}>
-            <table className="sa-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Phone</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {searching ? (
+          {/* Selected member
+          {selectedMember && (
+            <div className="selected-member">
+              <strong>Selected Member:</strong>{" "}
+              {selectedMember.name}
+            </div>
+          )} */}
+
+          {/* Search results */}
+          {query.trim() && (
+            <div className="sa-table-wrapper" style={{ marginTop: "1rem" }}>
+              <table className="sa-table">
+                <thead>
                   <tr>
-                    <td colSpan={5} className="sa-table__empty">
-                      Searching...
-                    </td>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Status</th>
                   </tr>
-                ) : results.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="sa-table__empty">
-                      {query.trim() ? "No members found" : "Type to search"}
-                    </td>
-                  </tr>
-                ) : (
-                  results.map((member) => (
-                    <tr key={member.id}>
-                      <td>{member.name}</td>
-                      <td>{member.email}</td>
-                      <td>{member.phone}</td>
-                      <td>{member.isActive ? "Active" : "Inactive"}</td>
-                      <td>
-                        <button
-                          className="sa-btn-primary"
-                          disabled={assigningId === member.id}
-                          onClick={() => handleMakeAdmin(member)}
-                        >
-                          {assigningId === member.id
-                            ? "Assigning..."
-                            : "Make Admin"}
-                        </button>
+                </thead>
+
+                <tbody>
+                  {searching ? (
+                    <tr>
+                      <td colSpan={4} className="sa-table__empty">
+                        Searching...
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : results.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="sa-table__empty">
+                        No members found
+                      </td>
+                    </tr>
+                  ) : (
+                    results.map((member) => (
+                      <tr
+                        key={member.id}
+                        onClick={() => handleSelectMember(member)}
+                        className={
+                          selectedMember?.id === member.id ? "selected-row" : ""
+                        }
+                        style={{ cursor: "pointer" }}
+                      >
+                        <td>{member.name}</td>
+                        <td>{member.email}</td>
+                        <td>{member.phone}</td>
+                        <td>{member.isActive ? "Active" : "Inactive"}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {/* Sangha */}
+          <div className="rs-field">
+            <label htmlFor="sangha" style={{marginTop: "1rem"}}>
+              Sangha Name
+            </label>
+
+            <select
+              id="sangha"
+              value={sanghaId}
+              onChange={(e) => setSanghaId(e.target.value)}
+              disabled={loadingSanghas}
+            >
+              <option value="">
+                {loadingSanghas ? "Loading Sanghas..." : "Select Sangha"}
+              </option>
+
+              {sanghas.map((sangha) => (
+                <option key={sangha.id} value={sangha.id}>
+                  {sangha.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Bottom button */}
+          <div className="sa-modal__footer">
+            <button
+              className="sa-btn-secondary"
+              onClick={onClose}
+              disabled={assigning}
+            >
+              Cancel
+            </button>
+
+            <button
+              className="sa-btn-primary"
+              onClick={handleMakeAdmin}
+              disabled={assigning || !selectedMember || !sanghaId}
+            >
+              {assigning ? "Assigning..." : "Make Admin"}
+            </button>
           </div>
         </div>
       </div>

@@ -70,4 +70,6 @@ class AdminRequestResponse(BaseModel):
     status: str
     rejection_reason: str | None
 
-
+class AddAdminRequest(BaseModel):
+    member_id: int
+    sangha_id: int

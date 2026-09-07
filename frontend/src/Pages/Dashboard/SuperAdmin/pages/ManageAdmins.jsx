@@ -48,8 +48,13 @@ export default function ManageAdmins() {
     setShowAddModal(false);
   };
 
-  const handleRemove = async (row) => {
-    if (!window.confirm(`Remove ${row.name} as admin?`)) return;
+    const handleRemove = async (row) => {
+    if (
+      !window.confirm(
+        `Remove ${row.name} as admin? They will be unassigned from any sanghas they manage and reverted to a member.`
+      )
+    )
+      return;
 
     try {
       await axios.delete(`${API_BASE}/admins/${row.id}`, {

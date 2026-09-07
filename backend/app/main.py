@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate
+from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest
 from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus
 from app.dbconnection import get_db, engine, Base
 from app.auth import create_access_token, hash_password, verify_password, get_current_user
@@ -226,30 +226,79 @@ def list_admins(db=Depends(get_db), current_user_id=Depends(get_current_user)):
 
 @app.post("/admins")
 def add_admin(
-    payload: dict,  # {"member_id": int} — replace with a Pydantic model
+    payload: AddAdminRequest,
     db=Depends(get_db),
     current_user_id=Depends(get_current_user),
 ):
-    member_id = payload.get("member_id")
-    if not member_id:
-        raise HTTPException(400, "member_id is required")
+    # Find selected member
+    member = db.query(User).filter(
+        User.id == payload.member_id
+    ).first()
 
-    member = db.query(User).filter(User.id == member_id).first()
     if not member:
-        raise HTTPException(404, "User not found")
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    # User must currently be a member
     if member.role != "member":
-        raise HTTPException(400, "User is not eligible for promotion (must be role=member)")
+        raise HTTPException(
+            status_code=400,
+            detail="User is not eligible for promotion"
+        )
+
+    # Find selected Sangha
+    sangha = db.query(Sanghas).filter(
+        Sanghas.id == payload.sangha_id
+    ).first()
+
+    if not sangha:
+        raise HTTPException(
+            status_code=404,
+            detail="Sangha not found"
+        )
+
+    # Make sure Sangha doesn't already have an admin
+    if sangha.admin_id is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="This Sangha already has an admin"
+        )
+
+    # --------------------------------
+    # UPDATE USERS TABLE
+    # --------------------------------
 
     member.role = "admin"
+
+    # If your User model has sangha_id,
+    # keep this if an admin should also belong
+    # to this Sangha.
+    member.sangha_id = sangha.id
+
+    # --------------------------------
+    # UPDATE SANGHAS TABLE
+    # --------------------------------
+
+    sangha.admin_id = member.id
+
+    # Save both changes
     db.commit()
+
     db.refresh(member)
+    db.refresh(sangha)
 
     return {
         "id": member.id,
         "name": member.fullname,
         "email": member.email,
-        "sanghaCount": 0,
+        "role": member.role,
         "status": "active" if member.isActive else "inactive",
+
+        "sanghaId": sangha.id,
+        "sanghaName": sangha.name,
+        "sanghaAdminId": sangha.admin_id,
     }
 
 
@@ -263,17 +312,20 @@ def remove_admin(
     if not admin:
         raise HTTPException(404, "Admin not found")
 
-    still_manages = db.query(Sanghas).filter(Sanghas.admin_id == admin_id).count()
-    if still_manages > 0:
-        raise HTTPException(
-            400,
-            f"Cannot remove: still assigned as admin to {still_manages} sangha(s). Reassign first.",
-        )
+    # Unassign this admin from every sangha they currently manage
+    unassigned_count = (
+        db.query(Sanghas)
+        .filter(Sanghas.admin_id == admin_id)
+        .update({Sanghas.admin_id: None})
+    )
 
     admin.role = "member"
     db.commit()
 
-    return {"detail": "Admin removed"}
+    return {
+        "detail": "Admin removed",
+        "sanghas_unassigned": unassigned_count,
+    }
 
 @app.get("/admin/members")
 def get_members_for_admin(

@@ -64,23 +64,23 @@ export default function ManageSanghas() {
           + Create Sangha
         </button>
       </div>
-    <div className="sa-scroll-table">
-      <DataTable
-        columns={[
-          { key: "name", label: "Sangha Name" },
-          { key: "code", label: "Code" },
-          { key: "subadmin", label: "Subadmin", render: (row) => row.subadmin_name || "-" },
-          { key: "members", label: "Members", render: (row) => row.membersCount ?? row.members_count ?? 0 },
-        ]}
-        rows={sanghas}
-        emptyText={fetching ? "Loading..." : "No sanghas yet — create one to get started"}
-        actions={(row) => (
-          <button className="sa-btn-outline" onClick={() => handleOpenMembersModal(row)}>
-            Add Members
-          </button>
-        )}
-      />
-  </div>
+          <div className="sa-scroll-table">
+        <DataTable
+          columns={[
+            { key: "name", label: "Sangha Name" },
+            { key: "code", label: "Code" },
+            { key: "subadmin", label: "Subadmin", render: (row) => row.subadmin_name || "-" },
+            { key: "members", label: "Members", render: (row) => row.membersCount ?? row.members_count ?? 0 },
+          ]}
+          rows={sanghas}
+          emptyText={fetching ? "Loading..." : "No sanghas yet — create one to get started"}
+          actions={(row) => (
+            <button className="sa-btn-outline" onClick={() => handleOpenMembersModal(row)}>
+              Add Members
+            </button>
+          )}
+        />
+      </div>
       {showCreateModal && (
         <CreateSanghaModal onClose={() => setShowCreateModal(false)} onCreated={handleCreated} />
       )}
