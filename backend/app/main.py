@@ -87,6 +87,17 @@ def create_sangha(
     db=Depends(get_db),
     current_user_id=Depends(get_current_user)
 ):
+    current_user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role == "admin":
+        admin_id = current_user.id            # self-assign, ignore payload
+    elif current_user.role == "superadmin":
+        admin_id = sangha.admin_id             # superadmin may leave unassigned or assign anyone
+    else:
+        raise HTTPException(status_code=403, detail="Only admin and superadmin can create a sangha.")
+
     new_sangha = Sanghas(
         name=sangha.name,
         address=sangha.address,
@@ -94,8 +105,8 @@ def create_sangha(
         state=sangha.state,
         isActive=True,
         membersCount=0,
-        created_by=int(current_user_id),
-        admin_id=sangha.admin_id,
+        created_by=current_user.id,
+        admin_id=admin_id,
         subadmin_id=None
     )
     db.add(new_sangha)
@@ -162,15 +173,20 @@ def add_member(
     member = db.query(User).filter(User.id == member_id).first()
     if not member:
         raise HTTPException(404, "User not found")
-    if member.sangha_id == sangha_id:
-        raise HTTPException(400, "User is already a member of this sangha")
+
+    if member.sangha_id is not None:
+        raise HTTPException(
+            400,
+            "User already belongs to a sangha"
+            if member.sangha_id != sangha_id
+            else "User is already a member of this sangha"
+        )
 
     member.sangha_id = sangha_id
     sangha.membersCount += 1
     db.commit()
 
     return {"detail": "Member added", "membersCount": sangha.membersCount}
-
 
 @app.get("/users/search")
 def search_members(
@@ -210,6 +226,14 @@ def search_members(
 
     results = query.limit(20).all()
 
+    sangha_ids = {u.sangha_id for u in results if u.sangha_id is not None}
+    sangha_names = {}
+    if sangha_ids:
+        sangha_names = {
+            s.id: s.name
+            for s in db.query(Sanghas).filter(Sanghas.id.in_(sangha_ids)).all()
+        }
+
     return [
         {
             "id": u.id,
@@ -218,6 +242,8 @@ def search_members(
             "phone": u.phone,
             "isActive": u.isActive,
             "role": u.role,
+            "sanghaId": u.sangha_id,
+            "sanghaName": sangha_names.get(u.sangha_id) if u.sangha_id else None,
         }
         for u in results
     ]
@@ -354,6 +380,64 @@ def remove_admin(
         "detail": "Admin removed",
         "sanghas_unassigned": unassigned_count,
     }
+
+@app.delete("/sanghas/{sangha_id}/members/{member_id}")
+def remove_member(
+    sangha_id: int,
+    member_id: int,
+    db=Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    sangha = db.query(Sanghas).filter(Sanghas.id == sangha_id).first()
+    if not sangha:
+        raise HTTPException(404, "Sangha not found")
+
+    member = db.query(User).filter(User.id == member_id).first()
+    if not member:
+        raise HTTPException(404, "User not found")
+
+    if member.sangha_id != sangha_id:
+        raise HTTPException(400, "User is not a member of this sangha")
+
+    member.sangha_id = None
+    if sangha.membersCount > 0:
+        sangha.membersCount -= 1
+    db.commit()
+
+    return {"detail": "Member removed", "membersCount": sangha.membersCount}
+
+@app.get("/sanghas/{sangha_id}/members")
+def list_sangha_members(
+    sangha_id: int,
+    q: str = "",
+    db=Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    sangha = db.query(Sanghas).filter(Sanghas.id == sangha_id).first()
+    if not sangha:
+        raise HTTPException(404, "Sangha not found")
+
+    query = db.query(User).filter(
+        User.sangha_id == sangha_id,
+        User.role == "member",
+    )
+
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            or_(
+                User.fullname.ilike(like),
+                User.email.ilike(like),
+                User.phone.ilike(like),
+            )
+        )
+
+    members = query.all()
+
+    return [
+        {"id": m.id, "name": m.fullname, "email": m.email, "phone": m.phone}
+        for m in members
+    ]
 
 @app.get("/admin/members")
 def get_members_for_admin(

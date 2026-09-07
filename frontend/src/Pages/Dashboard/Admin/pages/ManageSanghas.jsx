@@ -3,6 +3,7 @@ import axios from "axios";
 import DataTable from "../../SuperAdmin/components/DataTable";
 import CreateSanghaModal from "../components/CreateSanghaModal";
 import AddMembersModal from "../components/AddMembersModal";
+import RemoveMembersModal from "../components/RemoveMembersModal";
 
 const API_BASE = "http://localhost:8000";
 
@@ -12,6 +13,7 @@ export default function ManageSanghas() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [activeSangha, setActiveSangha] = useState(null);
 
   const token = () => localStorage.getItem("access_token");
@@ -56,33 +58,77 @@ export default function ManageSanghas() {
     fetchSanghas();
   };
 
+  const handleOpenRemoveModal = (row) => {
+    setActiveSangha(row);
+    setShowRemoveModal(true);
+  };
+
+  const handleCloseRemoveModal = () => {
+    setShowRemoveModal(false);
+    setActiveSangha(null);
+  };
+
+  const handleMemberRemoved = () => {
+    handleCloseRemoveModal();
+    fetchSanghas();
+  };
+
   return (
     <div className="sa-page">
       <div className="sa-section__header">
         <h2 className="sa-section__title">My Sanghas</h2>
-        <button className="sa-btn-primary" onClick={() => setShowCreateModal(true)}>
+        <button
+          className="sa-btn-primary"
+          onClick={() => setShowCreateModal(true)}
+        >
           + Create Sangha
         </button>
       </div>
-          <div className="sa-scroll-table">
+      <div className="sa-scroll-table">
         <DataTable
           columns={[
             { key: "name", label: "Sangha Name" },
             { key: "code", label: "Code" },
-            { key: "subadmin", label: "Subadmin", render: (row) => row.subadmin_name || "-" },
-            { key: "members", label: "Members", render: (row) => row.membersCount ?? row.members_count ?? 0 },
+            {
+              key: "subadmin",
+              label: "Subadmin",
+              render: (row) => row.subadmin_name || "-",
+            },
+            {
+              key: "members",
+              label: "Members",
+              render: (row) => row.membersCount ?? row.members_count ?? 0,
+            },
           ]}
           rows={sanghas}
-          emptyText={fetching ? "Loading..." : "No sanghas yet — create one to get started"}
+          emptyText={
+            fetching
+              ? "Loading..."
+              : "No sanghas yet — create one to get started"
+          }
           actions={(row) => (
-            <button className="sa-btn-outline" onClick={() => handleOpenMembersModal(row)}>
-              Add Members
-            </button>
+            <>
+              <button
+                className="sa-btn-outline"
+                onClick={() => handleOpenMembersModal(row)}
+              >
+                Add Members
+              </button>
+              <button
+                className="sa-btn-outline"
+                onClick={() => handleOpenRemoveModal(row)}
+              >
+                Remove Member
+              </button>
+            </>
           )}
         />
       </div>
       {showCreateModal && (
-        <CreateSanghaModal onClose={() => setShowCreateModal(false)} onCreated={handleCreated} />
+        <CreateSanghaModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={handleCreated}
+        />
       )}
 
       {showMembersModal && activeSangha && (
@@ -92,6 +138,13 @@ export default function ManageSanghas() {
           onMemberAdded={handleMemberAdded}
         />
       )}
+      {showRemoveModal && activeSangha && (
+  <RemoveMembersModal
+    sangha={activeSangha}
+    onClose={handleCloseRemoveModal}
+    onMemberRemoved={handleMemberRemoved}
+  />
+)}
     </div>
   );
 }

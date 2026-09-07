@@ -13,6 +13,7 @@ export default function ManageSanghas() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [activeSangha, setActiveSangha] = useState(null);
 
   const token = () => localStorage.getItem("access_token");
@@ -36,9 +37,9 @@ export default function ManageSanghas() {
   }, []);
 
   const handleCreated = () => {
-  setShowCreateModal(false);
-  fetchSanghas();   // pulls fresh data, including joined admin_name
-};
+    setShowCreateModal(false);
+    fetchSanghas(); // pulls fresh data, including joined admin_name
+  };
 
   const handleOpenMembersModal = (row) => {
     setActiveSangha(row);
@@ -50,11 +51,26 @@ export default function ManageSanghas() {
     setActiveSangha(null);
   };
 
+  const handleOpenRemoveModal = (row) => {
+    setActiveSangha(row);
+    setShowRemoveModal(true);
+  };
+
+  const handleCloseRemoveModal = () => {
+    setShowRemoveModal(false);
+    setActiveSangha(null);
+  };
+
+  const handleMemberRemoved = () => {
+    handleCloseRemoveModal();
+    fetchSanghas();
+  };
+
   const handleMemberAdded = (sanghaId, newCount) => {
     setSanghas((prev) =>
       prev.map((s) =>
-        s.id === sanghaId ? { ...s, membersCount: newCount } : s
-      )
+        s.id === sanghaId ? { ...s, membersCount: newCount } : s,
+      ),
     );
   };
 
@@ -62,18 +78,33 @@ export default function ManageSanghas() {
     <div className="sa-page">
       <div className="sa-section__header">
         <h2 className="sa-section__title">Manage Sanghas</h2>
-        <button className="sa-btn-primary" onClick={() => setShowCreateModal(true)}>
+        <button
+          className="sa-btn-primary"
+          onClick={() => setShowCreateModal(true)}
+        >
           + Create Sangha
         </button>
       </div>
-        <div className="sa-scroll-table">
+      <div className="sa-scroll-table">
         <DataTable
           columns={[
             { key: "name", label: "Sangha Name" },
             { key: "code", label: "Code" },
-            { key: "admin", label: "Admin", render: (row) => row.admin_name || "-" },
-            { key: "subadmin", label: "Subadmin", render: (row) => row.subadmin_name || "-" },
-            { key: "members", label: "Members", render: (row) => row.membersCount ?? 0 },
+            {
+              key: "admin",
+              label: "Admin",
+              render: (row) => row.admin_name || "-",
+            },
+            {
+              key: "subadmin",
+              label: "Subadmin",
+              render: (row) => row.subadmin_name || "-",
+            },
+            {
+              key: "members",
+              label: "Members",
+              render: (row) => row.membersCount ?? 0,
+            },
           ]}
           rows={sanghas}
           emptyText={fetching ? "Loading..." : "No records found"}
@@ -81,12 +112,16 @@ export default function ManageSanghas() {
             <>
               <button
                 className="sa-btn-outline"
-                style={{ marginRight: "0.5rem" }}
                 onClick={() => handleOpenMembersModal(row)}
               >
                 Add Members
               </button>
-              <button className="sa-btn-outline">Edit</button>
+              <button
+                className="sa-btn-outline"
+                onClick={() => handleOpenRemoveModal(row)}
+              >
+                Remove Member
+              </button>
             </>
           )}
         />
@@ -106,6 +141,13 @@ export default function ManageSanghas() {
           onMemberAdded={handleMemberAdded}
         />
       )}
+      {showRemoveModal && activeSangha && (
+  <RemoveMembersModal
+    sangha={activeSangha}
+    onClose={handleCloseRemoveModal}
+    onMemberRemoved={handleMemberRemoved}
+  />
+)}
     </div>
   );
 }
