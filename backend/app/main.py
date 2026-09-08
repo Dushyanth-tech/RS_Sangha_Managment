@@ -1,10 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest
+from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload
 from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus
 from app.dbconnection import get_db, engine, Base
 from app.auth import create_access_token, hash_password, verify_password, get_current_user
-from sqlalchemy import or_,func
+from sqlalchemy import or_,func, select
 from sqlalchemy.orm import aliased, Session
 from datetime import datetime, timezone
 
@@ -22,7 +22,35 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+@app.get("/overview")
+def get_overview_stats(
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user)
+):
+    current_user = db.query(User).filter(User.id == int(current_user_id)).first()
 
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Only superadmin can view overview stats.")
+
+    total_admins = db.scalar(
+        select(func.count(User.id)).where(User.role == "admin")
+    )
+    total_sanghas = db.scalar(select(func.count(Sanghas.id)))
+    total_members = db.query(User).filter(User.role == "member").count()
+    
+    pending_requests = db.scalar(
+        select(func.count(SubAdminRequest.id)).where(SubAdminRequest.status == "pending")
+    )
+
+    return {
+        "totalAdmins": total_admins or 0,
+        "totalSanghas": total_sanghas or 0,
+        "pendingRequests": pending_requests or 0,
+        "totalMembers": total_members or 0,
+    }
 
 @app.post("/auth/register")
 def register_user(user: NewUser, db = Depends(get_db)):
@@ -405,6 +433,63 @@ def remove_member(
     db.commit()
 
     return {"detail": "Member removed", "membersCount": sangha.membersCount}
+
+@app.get("/admins/{admin_id}/sanghas")
+def get_admin_sanghas(
+    admin_id: int,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user)
+):
+    current_user = db.query(User).filter(User.id == int(current_user_id)).first()
+
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Only superadmin can view an admin's sanghas.")
+
+    admin = db.query(User).filter(User.id == admin_id, User.role == "admin").first()
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+
+    sanghas = db.query(Sanghas).filter(Sanghas.admin_id == admin_id).all()
+
+    return [{"id": s.id, "name": s.name} for s in sanghas]
+
+
+@app.delete("/admins/{admin_id}/sanghas")
+def remove_admin_from_sanghas(
+    admin_id: int,
+    payload: RemoveSanghasPayload,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user)
+):
+    current_user = db.query(User).filter(User.id == int(current_user_id)).first()
+
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Only superadmin can remove an admin from sanghas.")
+
+    admin = db.query(User).filter(User.id == admin_id, User.role == "admin").first()
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+
+    sanghas_to_update = db.query(Sanghas).filter(
+        Sanghas.id.in_(payload.sangha_ids),
+        Sanghas.admin_id == admin_id
+    ).all()
+
+    for sangha in sanghas_to_update:
+        sangha.admin_id = None
+
+    db.commit()
+
+    return {
+        "detail": "Admin unassigned from selected sanghas",
+        "sanghas_unassigned": len(sanghas_to_update)
+    }
 
 @app.get("/sanghas/{sangha_id}/members")
 def list_sangha_members(

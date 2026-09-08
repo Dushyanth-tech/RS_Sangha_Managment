@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import AuthPage from "./Pages/Auth Page/AuthPage";
 import SuperAdminDashboard from "./Pages/Dashboard/SuperAdmin/SuperAdminDashboard";
 import AdminDashboard from "./Pages/Dashboard/Admin/AdminDashboard";
-import SubAdminDashboard from "./Pages/Dashboard/SubAdmin/SubAdminDashboard";
 import MemberDashboard from "./Pages/Dashboard/Member/MemberDashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
@@ -33,16 +32,6 @@ export default function App() {
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Subadmin */}
-      <Route
-        path="/dashboard/subadmin"
-        element={
-          <ProtectedRoute allowedRoles={["subadmin"]}>
-            <SubAdminDashboard />
           </ProtectedRoute>
         }
       />

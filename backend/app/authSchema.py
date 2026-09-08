@@ -73,3 +73,6 @@ class AdminRequestResponse(BaseModel):
 class AddAdminRequest(BaseModel):
     member_id: int
     sangha_id: int
+
+class RemoveSanghasPayload(BaseModel):
+    sangha_ids: list[int]

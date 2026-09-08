@@ -1,6 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import StatsCard from "../components/StatsCard";
 import DataTable from "../components/DataTable";
+
+const API_BASE = "http://localhost:8000";
 
 const recentActivity = [
   { id: 1, actor: "Admin - Ramesh", action: "Promoted member to subadmin", sangha: "Shanti Sangha", time: "2h ago" },
@@ -9,13 +12,48 @@ const recentActivity = [
 ];
 
 export default function Overview() {
+  const [stats, setStats] = useState({
+    totalAdmins: null,
+    totalSanghas: null,
+    pendingRequests: null,
+    totalMembers: null,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const token = () => localStorage.getItem("access_token");
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_BASE}/overview`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      setStats(res.data);
+      console.log("Fetched stats:", res.data);
+      setError(null);
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      if (error.response) console.log("Backend error:", error.response.data);
+      setError("Could not load dashboard stats");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
   return (
     <div className="sa-page">
+      {error && <p className="sa-error">{error}</p>}
+
       <div className="sa-stats-grid">
-        <StatsCard label="Total Admins" value="12" icon="👤" trend={{ direction: "up", value: "2 this month" }} />
-        <StatsCard label="Total Sanghas" value="34" icon="🏛️" trend={{ direction: "up", value: "4 this month" }} />
-        <StatsCard label="Pending Requests" value="6" icon="📩" />
-        <StatsCard label="Total Members" value="1,208" icon="👥" trend={{ direction: "up", value: "56 this month" }} />
+        <StatsCard label="Total Admins" value={loading ? "…" : stats.totalAdmins} icon="👤" />
+        <StatsCard label="Total Sanghas" value={loading ? "…" : stats.totalSanghas} icon="🏛️" />
+        <StatsCard label="Pending Requests" value={loading ? "…" : stats.pendingRequests} icon="📩" />
+        <StatsCard label="Total Members" value={loading ? "…" : stats.totalMembers} icon="👥" />
       </div>
 
       <div className="sa-section">

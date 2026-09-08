@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import DataTable from "../components/DataTable";
 import AddAdminModal from "../components/AddAdminModal";
+import RemoveAdminModal from "../components/RemoveAdminModal";
 
 const API_BASE = "http://localhost:8000";
 
@@ -9,6 +10,7 @@ export default function ManageAdmins() {
   const [admins, setAdmins] = useState([]);
   const [fetching, setFetching] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState(null); // admin row being edited
 
   const token = () => localStorage.getItem("access_token");
 
@@ -33,7 +35,6 @@ export default function ManageAdmins() {
   const handleOpenAddModal = () => setShowAddModal(true);
   const handleCloseAddModal = () => setShowAddModal(false);
 
-  // Called by the modal after a successful "Make Admin"
   const handleAdminAdded = (member) => {
     setAdmins((prev) => [
       ...prev,
@@ -48,23 +49,18 @@ export default function ManageAdmins() {
     setShowAddModal(false);
   };
 
-    const handleRemove = async (row) => {
-    if (
-      !window.confirm(
-        `Remove ${row.name} as admin? They will be unassigned from any sanghas they manage and reverted to a member.`
-      )
-    )
-      return;
+  const handleOpenRemoveModal = (row) => setRemoveTarget(row);
+  const handleCloseRemoveModal = () => setRemoveTarget(null);
 
-    try {
-      await axios.delete(`${API_BASE}/admins/${row.id}`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
-      setAdmins((prev) => prev.filter((a) => a.id !== row.id));
-    } catch (error) {
-      console.error("Error removing admin:", error);
-      if (error.response) console.log("Backend error:", error.response.data);
-    }
+  // Called after modal successfully unassigns admin from selected sanghas
+  const handleSanghasRemoved = (adminId, removedSanghaIds) => {
+    setAdmins((prev) =>
+      prev.map((a) =>
+        a.id === adminId
+          ? { ...a, sanghaCount: Math.max(0, a.sanghaCount - removedSanghaIds.length) }
+          : a
+      )
+    );
   };
 
   return (
@@ -109,7 +105,7 @@ export default function ManageAdmins() {
             </button>
             <button
               className="sa-btn-outline"
-              onClick={() => handleRemove(row)}
+              onClick={() => handleOpenRemoveModal(row)}
             >
               Remove
             </button>
@@ -121,6 +117,14 @@ export default function ManageAdmins() {
         <AddAdminModal
           onClose={handleCloseAddModal}
           onAssigned={handleAdminAdded}
+        />
+      )}
+
+      {removeTarget && (
+        <RemoveAdminModal
+          admin={removeTarget}
+          onClose={handleCloseRemoveModal}
+          onRemoved={handleSanghasRemoved}
         />
       )}
     </div>
