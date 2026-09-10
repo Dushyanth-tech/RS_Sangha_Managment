@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload
+from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload,SanghaUpdate
 from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus
 from app.dbconnection import get_db, engine, Base
 from app.auth import create_access_token, hash_password, verify_password, get_current_user
@@ -40,7 +40,7 @@ def get_overview_stats(
     )
     total_sanghas = db.scalar(select(func.count(Sanghas.id)))
     total_members = db.query(User).filter(User.role == "member").count()
-    
+
     pending_requests = db.scalar(
         select(func.count(SubAdminRequest.id)).where(SubAdminRequest.status == "pending")
     )
@@ -91,7 +91,7 @@ def login_user(user: LoginUser, db=Depends(get_db)):
             status_code=400,
             detail="Invalid email or password"
         )
-
+    
     access_token = create_access_token({
         "sub": str(db_user.id),
         "email": db_user.email,
@@ -104,10 +104,12 @@ def login_user(user: LoginUser, db=Depends(get_db)):
         "token_type": "bearer",
         "user": {
             "id": db_user.id,
+            "fullname": db_user.fullname,
             "email": db_user.email,
             "role": db_user.role
         }
     }
+
 
 @app.post("/sanghas")
 def create_sangha(
@@ -484,11 +486,21 @@ def remove_admin_from_sanghas(
     for sangha in sanghas_to_update:
         sangha.admin_id = None
 
+    db.flush()  # make the unassignments visible to the count query below
+
+    remaining_count = db.query(Sanghas).filter(Sanghas.admin_id == admin_id).count()
+
+    demoted = False
+    if remaining_count == 0:
+        admin.role = "member"
+        demoted = True
+
     db.commit()
 
     return {
         "detail": "Admin unassigned from selected sanghas",
-        "sanghas_unassigned": len(sanghas_to_update)
+        "sanghas_unassigned": len(sanghas_to_update),
+        "demoted_to_member": demoted
     }
 
 @app.get("/sanghas/{sangha_id}/members")
@@ -918,5 +930,35 @@ def get_pending_admin_requests_count(
     count = query.count()
 
     return {"pending_count": count}
+
+@app.patch("/sanghas/{sangha_id}")
+def update_sangha(
+    sangha_id: int,
+    payload: SanghaUpdate,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    sangha = db.query(Sanghas).filter(Sanghas.id == sangha_id).first()
+    if not sangha:
+        raise HTTPException(404, "Sangha not found")
+
+    # Only touch fields that were actually sent and non-empty —
+    # this is the safety net; the frontend also only sends changed fields.
+    update_data = payload.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        if value is not None and value.strip() != "":
+            setattr(sangha, field, value.strip())
+
+    db.commit()
+    db.refresh(sangha)
+
+    return {
+        "id": sangha.id,
+        "name": sangha.name,
+        "code": sangha.code,
+        "address": sangha.address,
+        "city": sangha.city,
+        "state": sangha.state,
+    }
 
 Base.metadata.create_all(bind=engine)

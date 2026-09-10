@@ -30,7 +30,6 @@ export default function Overview() {
         headers: { Authorization: `Bearer ${token()}` },
       });
       setStats(res.data);
-      console.log("Fetched stats:", res.data);
       setError(null);
     } catch (error) {
       console.error("Error fetching stats:", error);

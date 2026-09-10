@@ -1,6 +1,9 @@
 import React from "react";
 
-export default function Topbar({ title, onToggleSidebar, adminName = "Superadmin", onLogout }) {
+export default function Topbar({ title, onToggleSidebar, onLogout }) {
+  const user = JSON.parse(localStorage.getItem("user"));
+  const initial = user?.fullname ? user.fullname.charAt(0).toUpperCase() : "?";
+  // console.log("Topbar user:", user, "Initial:", initial);
   return (
     <header className="sa-topbar">
       <div className="sa-topbar__left">
@@ -13,8 +16,8 @@ export default function Topbar({ title, onToggleSidebar, adminName = "Superadmin
       <div className="sa-topbar__right">
         <input className="sa-topbar__search" type="text" placeholder="Search admins, sanghas, members..." />
         <div className="sa-topbar__profile">
-          <div className="sa-topbar__avatar">{adminName.charAt(0)}</div>
-          <span className="sa-topbar__name">{adminName}</span>
+          <div className="sa-topbar__avatar">{initial}</div>
+          <span className="sa-topbar__name">{user.fullname}</span>
         </div>
         <button className="sa-topbar__logout" onClick={onLogout}>
           Logout

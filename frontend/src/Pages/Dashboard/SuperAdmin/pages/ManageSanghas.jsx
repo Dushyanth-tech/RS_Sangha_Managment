@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import DataTable from "../components/DataTable";
 import CreateSanghaModal from "../components/CreateSanghaModal";
-import AddMembersModal from "../components/AddMembersModal";
+import EditSanghaModal from "../components/EditSanghaModal";
 import "./ManageSanghas.css";
 
 const API_BASE = "http://localhost:8000";
@@ -10,11 +10,16 @@ const API_BASE = "http://localhost:8000";
 export default function ManageSanghas() {
   const [sanghas, setSanghas] = useState([]);
   const [fetching, setFetching] = useState(true);
+  const [search, setSearch] = useState("");
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showMembersModal, setShowMembersModal] = useState(false);
-  const [showRemoveModal, setShowRemoveModal] = useState(false);
-  const [activeSangha, setActiveSangha] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
+
+  const [toast, setToast] = useState(null);
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const token = () => localStorage.getItem("access_token");
 
@@ -38,46 +43,53 @@ export default function ManageSanghas() {
 
   const handleCreated = () => {
     setShowCreateModal(false);
-    fetchSanghas(); // pulls fresh data, including joined admin_name
-  };
-
-  const handleOpenMembersModal = (row) => {
-    setActiveSangha(row);
-    setShowMembersModal(true);
-  };
-
-  const handleCloseMembersModal = () => {
-    setShowMembersModal(false);
-    setActiveSangha(null);
-  };
-
-  const handleOpenRemoveModal = (row) => {
-    setActiveSangha(row);
-    setShowRemoveModal(true);
-  };
-
-  const handleCloseRemoveModal = () => {
-    setShowRemoveModal(false);
-    setActiveSangha(null);
-  };
-
-  const handleMemberRemoved = () => {
-    handleCloseRemoveModal();
     fetchSanghas();
+    showToast("Sangha created successfully");
   };
 
-  const handleMemberAdded = (sanghaId, newCount) => {
-    setSanghas((prev) =>
-      prev.map((s) =>
-        s.id === sanghaId ? { ...s, membersCount: newCount } : s,
-      ),
-    );
+  const handleOpenEditModal = (row) => setEditTarget(row);
+  const handleCloseEditModal = () => setEditTarget(null);
+
+  const handleChanged = () => {
+    fetchSanghas(); // single source of truth — same fix as ManageAdmins
   };
+
+  const filteredSanghas = sanghas.filter((s) =>
+    s.name.toLowerCase().includes(search.toLowerCase()),
+  );
 
   return (
     <div className="sa-page">
       <div className="sa-section__header">
         <h2 className="sa-section__title">Manage Sanghas</h2>
+        <div className="sa-search">
+          <svg
+            className="sa-search__icon"
+            viewBox="0 0 20 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="9"
+              cy="9"
+              r="6.5"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            />
+            <path
+              d="M14 14L18 18"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            />
+          </svg>
+          <input
+            className="sa-input sa-search__input"
+            placeholder="Search sanghas by name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
         <button
           className="sa-btn-primary"
           onClick={() => setShowCreateModal(true)}
@@ -85,6 +97,7 @@ export default function ManageSanghas() {
           + Create Sangha
         </button>
       </div>
+
       <div className="sa-scroll-table">
         <DataTable
           columns={[
@@ -106,23 +119,21 @@ export default function ManageSanghas() {
               render: (row) => row.membersCount ?? 0,
             },
           ]}
-          rows={sanghas}
-          emptyText={fetching ? "Loading..." : "No records found"}
+          rows={filteredSanghas}
+          emptyText={
+            fetching
+              ? "Loading..."
+              : search
+                ? "No sanghas match your search"
+                : "No records found"
+          }
           actions={(row) => (
-            <>
-              <button
-                className="sa-btn-outline"
-                onClick={() => handleOpenMembersModal(row)}
-              >
-                Add Members
-              </button>
-              <button
-                className="sa-btn-outline"
-                onClick={() => handleOpenRemoveModal(row)}
-              >
-                Remove Member
-              </button>
-            </>
+            <button
+              className="sa-btn-outline"
+              onClick={() => handleOpenEditModal(row)}
+            >
+              Edit
+            </button>
           )}
         />
       </div>
@@ -134,20 +145,15 @@ export default function ManageSanghas() {
         />
       )}
 
-      {showMembersModal && activeSangha && (
-        <AddMembersModal
-          sangha={activeSangha}
-          onClose={handleCloseMembersModal}
-          onMemberAdded={handleMemberAdded}
+      {editTarget && (
+        <EditSanghaModal
+          sangha={editTarget}
+          onClose={handleCloseEditModal}
+          onChanged={handleChanged}
         />
       )}
-      {showRemoveModal && activeSangha && (
-  <RemoveMembersModal
-    sangha={activeSangha}
-    onClose={handleCloseRemoveModal}
-    onMemberRemoved={handleMemberRemoved}
-  />
-)}
+
+      {toast && <div className="sa-toast">{toast}</div>}
     </div>
   );
 }

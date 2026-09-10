@@ -146,9 +146,7 @@ export default function AuthPage() {
         navigate("/superadmin/dashboard");
       } else if (user.role === "admin") {
         navigate("/admin/dashboard");
-      } else if (user.role === "subadmin") {
-        navigate("/subadmin/dashboard");
-      } else if (user.role === "member") {
+      }else if (user.role === "member") {
         navigate("/member/dashboard");
       }
     } catch (err) {

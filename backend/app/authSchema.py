@@ -76,3 +76,9 @@ class AddAdminRequest(BaseModel):
 
 class RemoveSanghasPayload(BaseModel):
     sangha_ids: list[int]
+
+class SanghaUpdate(BaseModel):
+    name: str | None = None
+    address: str | None = None
+    city: str | None = None
+    state: str | None = None

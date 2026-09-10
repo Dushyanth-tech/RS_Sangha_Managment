@@ -20,6 +20,7 @@ export default function RemoveMembersModal({ sangha, onClose, onMemberRemoved })
         params: { q },
         headers: { Authorization: `Bearer ${token()}` },
       });
+      console.log("Fetched members:", res.data); // Debugging log
       setMembers(res.data);
     } catch (error) {
       console.error("Error fetching sangha members:", error);
