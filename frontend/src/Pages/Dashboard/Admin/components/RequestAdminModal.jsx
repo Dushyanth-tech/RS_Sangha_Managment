@@ -28,33 +28,33 @@ export default function RequestAdminModal({
   // Get Sanghas without Admin
   // -----------------------------
 
-  useEffect(() => {
-    const fetchSanghas = async () => {
-      try {
-        const res = await axios.get(
-          `${API_BASE}/sanghas/unassigned`,
-          {
-            headers: {
-              Authorization: `Bearer ${token()}`,
-            },
-          }
-        );
+ useEffect(() => {
+  const fetchSanghas = async () => {
+    try {
+      const res = await axios.get(
+        `${API_BASE}/sanghas/managed`,   // was /sanghas/unassigned
+        {
+          headers: {
+            Authorization: `Bearer ${token()}`,
+          },
+        }
+      );
 
-        setSanghas(res.data);
-      } catch (err) {
-        console.error(err);
+      setSanghas(res.data);
+    } catch (err) {
+      console.error(err);
 
-        setError(
-          err.response?.data?.detail ||
-            "Failed to load Sanghas."
-        );
-      } finally {
-        setLoadingSanghas(false);
-      }
-    };
+      setError(
+        err.response?.data?.detail ||
+          "Failed to load Sanghas."
+      );
+    } finally {
+      setLoadingSanghas(false);
+    }
+  };
 
-    fetchSanghas();
-  }, []);
+  fetchSanghas();
+}, []);
 
   // -----------------------------
   // Get Members

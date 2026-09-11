@@ -1,0 +1,232 @@
+:root {
+  --pink-900: #4a0e2e;
+  --pink-700: #8a1245;
+  --pink-600: #a8194f;
+  --pink-500: #c62368;
+  --blush-100: #fdeef4;
+  --blush-50: #fbf9f7;
+  --ink: #1c1017;
+  --muted: #7c6b73;
+  --line: #ece4e7;
+  --radius-md: 10px;
+  --radius-sm: 4px;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+/* ---------- Page ---------- */
+
+.sa-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 40px 48px;
+  background: var(--blush-50);
+  font-family: "Inter", sans-serif;
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+/* ---------- Header ---------- */
+
+.sa-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 20px;
+  padding-bottom: 14px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sa-section__title {
+  font-family: "Fraunces", serif;
+  font-size: 2.1rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--pink-900);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.sa-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.sa-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 320px;
+}
+
+.sa-search__icon {
+  position: absolute;
+  left: 12px;
+  width: 15px;
+  height: 15px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.sa-search__input {
+  width: 100%;
+  padding-left: 36px;
+}
+
+.sa-search:focus-within .sa-search__icon {
+  color: var(--pink-600);
+}
+
+.sa-btn-primary {
+  background: var(--pink-900);
+  color: #fff;
+  border: none;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 0.87rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.sa-btn-primary:hover:not(:disabled) {
+  background: var(--pink-700);
+}
+
+.sa-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sa-btn-outline {
+  background: transparent;
+  color: var(--pink-700);
+  border: 1px solid var(--pink-700);
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sa-btn-outline:hover:not(:disabled) {
+  background: var(--pink-900);
+  color: #fff;
+  border-color: var(--pink-900);
+}
+
+.sa-btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Table ---------- */
+
+.sa-scroll-table {
+  max-height: 65vh;
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.sa-table-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+  background: #fff;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sa-table-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.sa-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.89rem;
+}
+
+.sa-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--pink-900);
+  color: #fdeef4;
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  padding: 13px 18px;
+  white-space: nowrap;
+}
+
+.sa-table tbody td {
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  vertical-align: middle;
+}
+
+.sa-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.sa-table tbody tr:hover {
+  background: var(--blush-100);
+}
+
+.sa-table__empty {
+  text-align: center;
+  padding: 48px 18px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.sa-table__actions-col {
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* ---------- Badges ---------- */
+
+.sa-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.sa-badge--member { background: var(--blush-100); color: var(--pink-700); }
+.sa-badge--approved { background: #e6f4ea; color: #1e7e34; }
+.sa-badge--pending { background: #fdf3e0; color: #a86b00; }
+.sa-badge--rejected { background: #fbe9e9; color: #b3261e; }
+
+/* ---------- Toast ---------- */
+
+.sa-toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  background: #fff;
+  color: var(--ink);
+  border-left: 3px solid var(--pink-600);
+  padding: 12px 20px;
+  font-size: 0.87rem;
+  box-shadow: 0 2px 12px rgba(74, 14, 46, 0.12);
+  z-index: 1000;
+}

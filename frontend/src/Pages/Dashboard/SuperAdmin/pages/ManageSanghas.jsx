@@ -109,11 +109,6 @@ export default function ManageSanghas() {
               render: (row) => row.admin_name || "-",
             },
             {
-              key: "subadmin",
-              label: "Subadmin",
-              render: (row) => row.subadmin_name || "-",
-            },
-            {
               key: "members",
               label: "Members",
               render: (row) => row.membersCount ?? 0,

@@ -615,13 +615,34 @@ def get_unassigned_sanghas(
         for sangha in sanghas
     ]
 
+@app.get("/sanghas/managed")
+def get_managed_sanghas(
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    current_user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Only admin and superadmin can access this.")
+
+    query = db.query(Sanghas).filter(Sanghas.subadmin_id.is_(None))
+
+    if current_user.role == "admin":
+        query = query.filter(Sanghas.admin_id == current_user.id)
+    # superadmin: sees all sanghas without a subadmin yet
+
+    sanghas = query.all()
+
+    return [{"id": s.id, "name": s.name} for s in sanghas]
+
 @app.post("/admin-requests")
 def create_admin_request(
     data: AdminRequestCreate,
     db: Session = Depends(get_db),
     current_user_id=Depends(get_current_user)
 ):
-    # Get actual logged-in user
     current_user = (
         db.query(User)
         .filter(User.id == int(current_user_id))
@@ -629,10 +650,7 @@ def create_admin_request(
     )
 
     if not current_user:
-        raise HTTPException(
-            status_code=401,
-            detail="User not found."
-        )
+        raise HTTPException(status_code=401, detail="User not found.")
 
     if current_user.role not in ("admin", "superadmin"):
         raise HTTPException(
@@ -640,7 +658,6 @@ def create_admin_request(
             detail="Only admin and superadmin can create an admin request."
         )
 
-    # Find Sangha
     sangha = (
         db.query(Sanghas)
         .filter(Sanghas.id == data.sangha_id)
@@ -648,18 +665,26 @@ def create_admin_request(
     )
 
     if not sangha:
-        raise HTTPException(
-            status_code=404,
-            detail="Sangha not found."
-        )
+        raise HTTPException(status_code=404, detail="Sangha not found.")
 
-    if sangha.admin_id is not None:
+    if sangha.admin_id is None:
         raise HTTPException(
             status_code=400,
-            detail="This Sangha already has an admin."
+            detail="This Sangha has no admin assigned yet."
         )
 
-    # Find selected member
+    if current_user.role == "admin" and sangha.admin_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only propose a subadmin for a Sangha you manage."
+        )
+
+    if sangha.subadmin_id is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="This Sangha already has a subadmin."
+        )
+
     member = (
         db.query(User)
         .filter(User.id == data.requester_id)
@@ -667,10 +692,7 @@ def create_admin_request(
     )
 
     if not member:
-        raise HTTPException(
-            status_code=404,
-            detail="Member not found."
-        )
+        raise HTTPException(status_code=404, detail="Member not found.")
 
     if member.role != "member":
         raise HTTPException(
@@ -678,14 +700,9 @@ def create_admin_request(
             detail="Only members can be proposed as Admin."
         )
 
-    # Message is required
     if not data.message or not data.message.strip():
-        raise HTTPException(
-            status_code=400,
-            detail="Reason is required."
-        )
+        raise HTTPException(status_code=400, detail="Reason is required.")
 
-    # Check duplicate pending request
     existing_request = (
         db.query(SubAdminRequest)
         .filter(
@@ -697,31 +714,22 @@ def create_admin_request(
     )
 
     if existing_request:
-        raise HTTPException(
-            status_code=400,
-            detail="A pending request already exists."
-        )
+        raise HTTPException(status_code=400, detail="A pending request already exists.")
 
-    # Create request
     new_request = SubAdminRequest(
         sangha_id=sangha.id,
         admin_id=current_user.id,
         requester_id=member.id,
-
         subadmin_name=member.fullname,
         subadmin_email=member.email,
         subadmin_phone=member.phone or "",
-
         address=member.address or "",
         aadhar_number=member.aadhar_number or "",
-
         message=data.message.strip(),
-
         experience=None,
         qualifications=None,
         availability=None,
         additional_info=None,
-
         status=RequestStatus.pending,
         rejection_reason=None,
         reviewed_at=None
@@ -823,8 +831,6 @@ def approve_admin_request(
     )
     if not sangha:
         raise HTTPException(status_code=404, detail="Sangha no longer exists.")
-    if sangha.admin_id is not None:
-        raise HTTPException(status_code=400, detail="This Sangha already has an admin.")
 
     member = (
         db.query(User)
@@ -834,9 +840,23 @@ def approve_admin_request(
     if not member:
         raise HTTPException(status_code=404, detail="Candidate member no longer exists.")
 
-    # Promote the member and assign them as the sangha's admin
+    if member.role != "member":
+        raise HTTPException(status_code=400, detail="Candidate is no longer eligible for promotion.")
+
+    outgoing_admin_id = sangha.admin_id
+
+    # Promote the proposed member to admin, replacing the current one on this sangha
     member.role = "admin"
     sangha.admin_id = member.id
+
+    # If the outgoing admin no longer manages any sangha, demote them back to member
+    if outgoing_admin_id is not None and outgoing_admin_id != member.id:
+        outgoing_admin = db.query(User).filter(User.id == outgoing_admin_id).first()
+        if outgoing_admin:
+            db.flush()  # make sangha.admin_id change visible to the count below
+            remaining = db.query(Sanghas).filter(Sanghas.admin_id == outgoing_admin_id).count()
+            if remaining == 0:
+                outgoing_admin.role = "member"
 
     request_row.status = RequestStatus.approved
     request_row.reviewed_at = datetime.now(timezone.utc)
@@ -847,9 +867,8 @@ def approve_admin_request(
     return {
         "id": request_row.id,
         "status": request_row.status.value,
-        "detail": "Request approved. Member promoted to admin."
+        "detail": "Request approved. Member promoted to admin of this Sangha."
     }
-
 
 @app.patch("/admin-requests/{request_id}/reject")
 def reject_admin_request(
