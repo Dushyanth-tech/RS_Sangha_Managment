@@ -94,6 +94,23 @@ export default function EditSanghaModal({ sangha, onClose, onChanged }) {
     }
   };
 
+  const handleDelete = async () => {
+  try {
+    setDeleting(true);
+    await axios.delete(`${API_BASE}/sanghas/${sangha.id}`, {
+      headers: { Authorization: `Bearer ${token()}` },
+    });
+    onChanged();
+    onClose();
+  } catch (err) {
+    console.error("Error deleting sangha:", err);
+    setDetailsError(err.response?.data?.detail || "Failed to delete sangha.");
+    setConfirmDelete(false);
+  } finally {
+    setDeleting(false);
+  }
+};
+
   // ---------- Remove members tab ----------
   const [removeQuery, setRemoveQuery] = useState("");
   const [currentMembers, setCurrentMembers] = useState([]);
@@ -101,6 +118,8 @@ export default function EditSanghaModal({ sangha, onClose, onChanged }) {
   const [removingId, setRemovingId] = useState(null);
   const [removedIds, setRemovedIds] = useState(new Set());
   const removeDebounceRef = useRef(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchCurrentMembers = async (q) => {
     try {
@@ -285,15 +304,37 @@ export default function EditSanghaModal({ sangha, onClose, onChanged }) {
         </div>
 
         {tab === "details" && (
-          <div className="sa-modal__footer">
-            <button className="sa-btn-outline" onClick={onClose} disabled={savingDetails}>
-              Cancel
-            </button>
-            <button className="sa-btn-primary" onClick={handleSaveDetails} disabled={savingDetails}>
-              {savingDetails ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        )}
+  <div className="sa-modal__footer sa-modal__footer--split">
+    {!confirmDelete ? (
+      <button
+        className="sa-btn-danger"
+        onClick={() => setConfirmDelete(true)}
+        disabled={savingDetails}
+      >
+        Remove Sangha Permanently
+      </button>
+    ) : (
+      <div className="sa-confirm-inline">
+        <span>Delete “{sangha.name}” and detach all its members?</span>
+        <button className="sa-btn-outline" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+          Cancel
+        </button>
+        <button className="sa-btn-danger" onClick={handleDelete} disabled={deleting}>
+          {deleting ? "Deleting..." : "Yes, delete"}
+        </button>
+      </div>
+    )}
+
+    <div className="sa-modal__footer-right">
+      <button className="sa-btn-outline" onClick={onClose} disabled={savingDetails || deleting}>
+        Cancel
+      </button>
+      <button className="sa-btn-primary" onClick={handleSaveDetails} disabled={savingDetails || deleting}>
+        {savingDetails ? "Saving..." : "Save Changes"}
+      </button>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );

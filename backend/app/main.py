@@ -980,4 +980,61 @@ def update_sangha(
         "state": sangha.state,
     }
 
+@app.delete("/sanghas/{sangha_id}")
+def delete_sangha(
+    sangha_id: int,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    current_user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Not allowed.")
+
+    sangha = db.query(Sanghas).filter(Sanghas.id == sangha_id).first()
+    if not sangha:
+        raise HTTPException(404, "Sangha not found")
+
+    # An admin can only delete a sangha they manage
+    if current_user.role == "admin" and sangha.admin_id != current_user.id:
+        raise HTTPException(403, "You can only delete a Sangha you manage.")
+
+    admin_id = sangha.admin_id
+    subadmin_id = sangha.subadmin_id
+
+    # 1. Detach all members (they become unassigned, not deleted)
+    db.query(User).filter(User.sangha_id == sangha_id).update({User.sangha_id: None})
+
+    # 2. Delete any requests tied to this sangha (they reference it by FK)
+    db.query(SubAdminRequest).filter(SubAdminRequest.sangha_id == sangha_id).delete()
+
+    # 3. Delete the sangha itself
+    db.delete(sangha)
+    db.flush()
+
+    # 4. Demote the admin / subadmin if this was their only sangha
+    demoted = []
+
+    if admin_id:
+        remaining = db.query(Sanghas).filter(Sanghas.admin_id == admin_id).count()
+        if remaining == 0:
+            admin_user = db.query(User).filter(User.id == admin_id).first()
+            if admin_user and admin_user.role == "admin":
+                admin_user.role = "member"
+                demoted.append(admin_id)
+
+    if subadmin_id:
+        remaining = db.query(Sanghas).filter(Sanghas.subadmin_id == subadmin_id).count()
+        if remaining == 0:
+            sub_user = db.query(User).filter(User.id == subadmin_id).first()
+            if sub_user and sub_user.role == "subadmin":
+                sub_user.role = "member"
+                demoted.append(subadmin_id)
+
+    db.commit()
+
+    return {"detail": "Sangha deleted", "demoted_user_ids": demoted}
+
 Base.metadata.create_all(bind=engine)

@@ -211,3 +211,37 @@ html, body, #root { height: 100%; }
 .sa-search:focus-within .sa-search__icon {
   color: var(--pink-600);
 }
+
+.sa-modal__footer--split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sa-modal__footer-right { display: flex; gap: 10px; margin-left: auto; }
+
+.sa-btn-danger {
+  background: #fff;
+  color: #b3261e;
+  border: 1px solid #f1b4ad;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease;
+}
+.sa-btn-danger:hover:not(:disabled) { background: #fbe9e9; }
+.sa-btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.sa-confirm-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.83rem;
+  color: #b3261e;
+  flex-wrap: wrap;
+}
