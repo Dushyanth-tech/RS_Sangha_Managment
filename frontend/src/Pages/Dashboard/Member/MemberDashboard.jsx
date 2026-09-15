@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./MemberDashboard.css";
+import ProfileWizard from "./pages/ProfileWizard";
 
 export default function MemberDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [page, setPage] = useState("dashboard"); // "dashboard" | "profile"
   const menuRef = useRef(null);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -37,13 +39,21 @@ export default function MemberDashboard() {
         <div className="md-sidebar__brand">R S Sangha</div>
 
         <nav className="md-nav">
-          <a className="md-nav__item md-nav__item--active" href="#">
+          <a
+            className={`md-nav__item ${page === "dashboard" ? "md-nav__item--active" : ""}`}
+            href="#"
+            onClick={(e) => { e.preventDefault(); setPage("dashboard"); }}
+          >
             <span className="md-nav__icon">⌂</span> Dashboard
           </a>
-          <a className="md-nav__item" href="#">
+          <a className="md-nav__item" href="#" onClick={(e) => e.preventDefault()}>
             <span className="md-nav__icon">🏛</span> My Sangha
           </a>
-          <a className="md-nav__item" href="#">
+          <a
+            className={`md-nav__item ${page === "profile" ? "md-nav__item--active" : ""}`}
+            href="#"
+            onClick={(e) => { e.preventDefault(); setPage("profile"); }}
+          >
             <span className="md-nav__icon">👤</span> Profile
           </a>
         </nav>
@@ -53,7 +63,7 @@ export default function MemberDashboard() {
       <div className="md-main">
         {/* Topbar */}
         <header className="md-topbar">
-          <div className="md-topbar__title">Dashboard</div>
+          <div className="md-topbar__title">{page === "profile" ? "My Profile" : "Dashboard"}</div>
 
           <div className="md-profile" ref={menuRef}>
             <button className="md-profile__trigger" onClick={() => setMenuOpen((v) => !v)}>
@@ -68,6 +78,12 @@ export default function MemberDashboard() {
                   <div className="md-profile__menu-name">{user.fullname || "Member"}</div>
                   <div className="md-profile__menu-email">{user.email || ""}</div>
                 </div>
+                <button
+                  className="md-profile__menu-item"
+                  onClick={() => { setMenuOpen(false); setPage("profile"); }}
+                >
+                  My Profile
+                </button>
                 <button className="md-profile__menu-item" onClick={handleLogout}>
                   Logout
                 </button>
@@ -78,43 +94,49 @@ export default function MemberDashboard() {
 
         {/* Content */}
         <main className="md-content">
-          <section className="md-welcome">
-            <h1 className="md-welcome__title">
-              Welcome back, {(user.fullname || "Member").split(" ")[0]}
-            </h1>
-            <p className="md-welcome__subtitle">
-              Here's a quick look at your sangha membership.
-            </p>
-          </section>
+          {page === "profile" ? (
+            <ProfileWizard onBack={() => setPage("dashboard")} />
+          ) : (
+            <>
+              <section className="md-welcome">
+                <h1 className="md-welcome__title">
+                  Welcome back, {(user.fullname || "Member").split(" ")[0]}
+                </h1>
+                <p className="md-welcome__subtitle">
+                  Here's a quick look at your sangha membership.
+                </p>
+              </section>
 
-          <section className="md-cards">
-            <div className="md-card">
-              <div className="md-card__label">Membership Status</div>
-              <div className="md-card__value">Active</div>
-            </div>
-            <div className="md-card">
-              <div className="md-card__label">Sangha</div>
-              <div className="md-card__value">—</div>
-            </div>
-            <div className="md-card">
-              <div className="md-card__label">Role</div>
-              <div className="md-card__value">{user.role || "Member"}</div>
-            </div>
-          </section>
+              <section className="md-cards">
+                <div className="md-card">
+                  <div className="md-card__label">Membership Status</div>
+                  <div className="md-card__value">Active</div>
+                </div>
+                <div className="md-card">
+                  <div className="md-card__label">Sangha</div>
+                  <div className="md-card__value">—</div>
+                </div>
+                <div className="md-card">
+                  <div className="md-card__label">Role</div>
+                  <div className="md-card__value">{user.role || "Member"}</div>
+                </div>
+              </section>
 
-          <section className="md-panel">
-            <h2 className="md-panel__title">My Details</h2>
-            <div className="md-detail-grid">
-              <div className="md-detail">
-                <span className="md-detail__label">Full Name</span>
-                <span className="md-detail__value">{user.fullname || "-"}</span>
-              </div>
-              <div className="md-detail">
-                <span className="md-detail__label">Email</span>
-                <span className="md-detail__value">{user.email || "-"}</span>
-              </div>
-            </div>
-          </section>
+              <section className="md-panel">
+                <h2 className="md-panel__title">My Details</h2>
+                <div className="md-detail-grid">
+                  <div className="md-detail">
+                    <span className="md-detail__label">Full Name</span>
+                    <span className="md-detail__value">{user.fullname || "-"}</span>
+                  </div>
+                  <div className="md-detail">
+                    <span className="md-detail__label">Email</span>
+                    <span className="md-detail__value">{user.email || "-"}</span>
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
         </main>
       </div>
     </div>

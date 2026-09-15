@@ -1,3 +1,5 @@
+from datetime import date
+from enum import Enum
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 import re
@@ -82,3 +84,67 @@ class SanghaUpdate(BaseModel):
     address: str | None = None
     city: str | None = None
     state: str | None = None
+
+class AccountType(str, Enum):
+    savings = "savings"
+    current = "current"
+
+class ProfileDetailsUpdate(BaseModel):
+    fullname: str | None = None
+    date_of_birth: date | None = None
+    phone: str | None = None
+    address: str | None = None
+    aadhar_number: str | None = None
+
+    @field_validator("aadhar_number")
+    @classmethod
+    def validate_aadhar(cls, v):
+        if not v:
+            return v
+        digits = re.sub(r"\D", "", v)
+        if len(digits) != 12:
+            raise ValueError("Aadhar number must be 12 digits")
+        return digits
+
+class BankDetailsUpdate(BaseModel):
+    pan_number: str | None = None
+    account_number: str | None = None
+    account_holder_name: str | None = None
+    bank_name: str | None = None
+    account_type: AccountType | None = None
+    ifsc_code: str | None = None
+    branch_name: str | None = None
+
+    @field_validator("pan_number")
+    @classmethod
+    def validate_pan(cls, v):
+        if not v:
+            return v
+        v = v.upper().strip()
+        if not re.match(r"^[A-Z]{5}[0-9]{4}[A-Z]$", v):
+            raise ValueError("Invalid PAN format")
+        return v
+
+    @field_validator("ifsc_code")
+    @classmethod
+    def validate_ifsc(cls, v):
+        if not v:
+            return v
+        v = v.upper().strip()
+        if not re.match(r"^[A-Z]{4}0[A-Z0-9]{6}$", v):
+            raise ValueError("Invalid IFSC code")
+        return v
+
+    @field_validator("account_number")
+    @classmethod
+    def validate_account_number(cls, v):
+        if not v:
+            return v
+        digits = re.sub(r"\D", "", v)
+        if not (9 <= len(digits) <= 18):
+            raise ValueError("Account number length looks invalid")
+        return digits
+
+class ProfileWizardUpdate(BaseModel):
+    profile: ProfileDetailsUpdate | None = None
+    banking: BankDetailsUpdate | None = None

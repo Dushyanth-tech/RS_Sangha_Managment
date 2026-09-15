@@ -1,12 +1,14 @@
-from fastapi import FastAPI, Depends, HTTPException
+from app.crypto import encrypt_value, decrypt_value, mask_last4
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload,SanghaUpdate
-from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus
+from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload,SanghaUpdate, ProfileWizardUpdate
+from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus, BankDetails
 from app.dbconnection import get_db, engine, Base
 from app.auth import create_access_token, hash_password, verify_password, get_current_user
 from sqlalchemy import or_,func, select
 from sqlalchemy.orm import aliased, Session
 from datetime import datetime, timezone
+import os, uuid
 
 app = FastAPI()
 
@@ -21,6 +23,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+UPLOAD_DIR = "uploads/profile_photos"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.get("/overview")
 def get_overview_stats(
@@ -1036,5 +1041,98 @@ def delete_sangha(
     db.commit()
 
     return {"detail": "Sangha deleted", "demoted_user_ids": demoted}
+
+@app.post("/me/photo")
+def upload_profile_photo(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
+        raise HTTPException(400, "Only JPEG, PNG, or WEBP images are allowed.")
+
+    ext = file.filename.rsplit(".", 1)[-1]
+    filename = f"{user.id}_{uuid.uuid4().hex}.{ext}"
+    path = os.path.join(UPLOAD_DIR, filename)
+
+    with open(path, "wb") as f:
+        f.write(file.file.read())
+
+    user.profile_photo_url = f"/{path}"
+    db.commit()
+
+    return {"profile_photo_url": user.profile_photo_url}
+
+
+@app.get("/me/profile-wizard")
+def get_profile_wizard(
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    bank = db.query(BankDetails).filter(BankDetails.user_id == user.id).first()
+
+    return {
+        "profile": {
+            "fullname": user.fullname,
+            "date_of_birth": user.date_of_birth,
+            "email": user.email,
+            "phone": user.phone,
+            "address": user.address,
+            "aadhar_number_masked": mask_last4(user.aadhar_number) if user.aadhar_number else None,
+            "profile_photo_url": user.profile_photo_url,
+        },
+        "banking": {
+            "pan_number_masked": mask_last4(decrypt_value(bank.pan_number_enc)) if bank and bank.pan_number_enc else None,
+            "account_number_masked": mask_last4(decrypt_value(bank.account_number_enc)) if bank and bank.account_number_enc else None,
+            "account_holder_name": bank.account_holder_name if bank else None,
+            "bank_name": bank.bank_name if bank else None,
+            "account_type": bank.account_type if bank else None,
+            "ifsc_code": bank.ifsc_code if bank else None,
+            "branch_name": bank.branch_name if bank else None,
+        } if bank else None,
+    }
+
+
+@app.patch("/me/complete-profile")
+def complete_profile(
+    payload: ProfileWizardUpdate,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if payload.profile:
+        for field, value in payload.profile.dict(exclude_unset=True).items():
+            if value not in (None, ""):
+                setattr(user, field, value)
+
+    if payload.banking:
+        bank = db.query(BankDetails).filter(BankDetails.user_id == user.id).first()
+        if not bank:
+            bank = BankDetails(user_id=user.id)
+            db.add(bank)
+
+        data = payload.banking.dict(exclude_unset=True)
+        if data.get("pan_number"):
+            bank.pan_number_enc = encrypt_value(data["pan_number"])
+        if data.get("account_number"):
+            bank.account_number_enc = encrypt_value(data["account_number"])
+        for field in ("account_holder_name", "bank_name", "account_type", "ifsc_code", "branch_name"):
+            if data.get(field):
+                setattr(bank, field, data[field])
+
+    db.commit()
+    return {"detail": "Profile updated successfully."}
+
 
 Base.metadata.create_all(bind=engine)

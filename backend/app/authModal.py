@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime, date
-from sqlalchemy import Integer, String, ForeignKey, Boolean, Enum, DateTime, Text, func
+from sqlalchemy import Integer, String, ForeignKey, Boolean, Enum, DateTime, Text, func, Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.dbconnection import Base
 
@@ -34,6 +34,9 @@ class User(Base):
     role: Mapped[Role] = mapped_column(Enum(Role), default=Role.member)
     isVerified: Mapped[bool] = mapped_column(Boolean, default=False)
     isActive: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    profile_photo_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     otp: Mapped[str | None] = mapped_column(String(6), nullable=True)
     otp_expiry: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -107,3 +110,18 @@ class SubAdminActivityLog(Base):
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)  # 45 = IPv6-safe
+
+class BankDetails(Base):
+    __tablename__ = "bank_details"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
+
+    pan_number_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    account_number_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    account_holder_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    bank_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    account_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    ifsc_code: Mapped[str | None] = mapped_column(String(11), nullable=True)
+    branch_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
