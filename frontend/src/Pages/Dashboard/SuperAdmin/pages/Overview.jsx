@@ -4,7 +4,9 @@ import {
   Users,
   Building2,
   Mail,
-  UserRound
+  UserRound,
+  BadgeCheck,
+  BadgeX,
 } from "lucide-react";
 import StatsCard from "../../../../Common_Component/StatsCard";
 import DataTable from "../../../../Common_Component/DataTable";
@@ -12,9 +14,27 @@ import DataTable from "../../../../Common_Component/DataTable";
 const API_BASE = "http://localhost:8000";
 
 const recentActivity = [
-  { id: 1, actor: "Admin - Ramesh", action: "Promoted member to subadmin", sangha: "Shanti Sangha", time: "2h ago" },
-  { id: 2, actor: "Superadmin", action: "Created new admin account", sangha: "—", time: "5h ago" },
-  { id: 3, actor: "Admin - Kavita", action: "Approved subadmin request", sangha: "Prem Sangha", time: "1d ago" },
+  {
+    id: 1,
+    actor: "Admin - Ramesh",
+    action: "Promoted member to subadmin",
+    sangha: "Shanti Sangha",
+    time: "2h ago",
+  },
+  {
+    id: 2,
+    actor: "Superadmin",
+    action: "Created new admin account",
+    sangha: "—",
+    time: "5h ago",
+  },
+  {
+    id: 3,
+    actor: "Admin - Kavita",
+    action: "Approved subadmin request",
+    sangha: "Prem Sangha",
+    time: "1d ago",
+  },
 ];
 
 export default function Overview() {
@@ -23,6 +43,8 @@ export default function Overview() {
     totalSanghas: null,
     pendingRequests: null,
     totalMembers: null,
+    verifiedMembers: null,
+    unverifiedMembers: null,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -55,10 +77,41 @@ export default function Overview() {
       {error && <p className="sa-error">{error}</p>}
 
       <div className="sa-stats-grid">
-        <StatsCard label="Total Admins" value={loading ? "…" : stats.totalAdmins} icon={Users} />
-        <StatsCard label="Total Sanghas" value={loading ? "…" : stats.totalSanghas} icon={Building2} />
-        <StatsCard label="Pending Requests" value={loading ? "…" : stats.pendingRequests} icon={Mail} />
-        <StatsCard label="Total Members" value={loading ? "…" : stats.totalMembers} icon={UserRound} />
+        <StatsCard
+          label="Total Admins"
+          value={loading ? "…" : stats.totalAdmins}
+          icon={<Users size={20} />}
+        />
+
+        <StatsCard
+          label="Total Sanghas"
+          value={loading ? "…" : stats.totalSanghas}
+          icon={<Building2 size={20} />}
+        />
+
+        <StatsCard
+          label="Pending Requests"
+          value={loading ? "…" : stats.pendingRequests}
+          icon={<Mail size={20} />}
+        />
+
+        <StatsCard
+          label="Total Members"
+          value={loading ? "…" : stats.totalMembers}
+          icon={<UserRound size={20} />}
+        />
+
+        <StatsCard
+          label="Verified Members"
+          value={loading ? "…" : stats.verifiedMembers}
+          icon={<BadgeCheck size={20} color="#16a34a" strokeWidth={2} />}
+        />
+
+        <StatsCard
+          label="Unverified Members"
+          value={loading ? "…" : stats.unverifiedMembers}
+          icon={<BadgeX size={20} color="#dc2626" strokeWidth={2} />}
+        />
       </div>
 
       <div className="sa-section">

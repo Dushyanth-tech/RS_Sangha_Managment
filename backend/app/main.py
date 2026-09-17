@@ -33,22 +33,52 @@ def get_overview_stats(
     db: Session = Depends(get_db),
     current_user_id=Depends(get_current_user)
 ):
-    current_user = db.query(User).filter(User.id == int(current_user_id)).first()
+    current_user = db.query(User).filter(
+        User.id == int(current_user_id)
+    ).first()
 
     if not current_user:
-        raise HTTPException(status_code=401, detail="User not found.")
+        raise HTTPException(
+            status_code=401,
+            detail="User not found."
+        )
 
     if current_user.role != "superadmin":
-        raise HTTPException(status_code=403, detail="Only superadmin can view overview stats.")
+        raise HTTPException(
+            status_code=403,
+            detail="Only superadmin can view overview stats."
+        )
 
     total_admins = db.scalar(
-        select(func.count(User.id)).where(User.role == "admin")
+        select(func.count(User.id)).where(
+            User.role == "admin"
+        )
     )
-    total_sanghas = db.scalar(select(func.count(Sanghas.id)))
-    total_members = db.query(User).filter(User.role == "member").count()
+
+    total_sanghas = db.scalar(
+        select(func.count(Sanghas.id))
+    )
+
+    total_members = db.query(User).filter(
+        User.role == "member"
+    ).count()
+
+    # Verified members
+    verified_members = db.query(User).filter(
+        User.role == "member",
+        User.isVerified == True
+    ).count()
+
+    # Unverified members
+    unverified_members = db.query(User).filter(
+        User.role == "member",
+        User.isVerified == False
+    ).count()
 
     pending_requests = db.scalar(
-        select(func.count(SubAdminRequest.id)).where(SubAdminRequest.status == "pending")
+        select(func.count(SubAdminRequest.id)).where(
+            SubAdminRequest.status == "pending"
+        )
     )
 
     return {
@@ -56,6 +86,8 @@ def get_overview_stats(
         "totalSanghas": total_sanghas or 0,
         "pendingRequests": pending_requests or 0,
         "totalMembers": total_members or 0,
+        "verifiedMembers": verified_members or 0,
+        "unverifiedMembers": unverified_members or 0,
     }
 
 @app.post("/auth/register")
