@@ -220,17 +220,17 @@ export default function ManageNotifications() {
       setClearing(true);
 
       await axios.post(
-  `${API_BASE}/notifications/clear-selected`,
-  {
-    notification_ids: selectedNotifications.map(Number),
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-      "Content-Type": "application/json",
-    },
-  }
-);
+        `${API_BASE}/notifications/clear-selected`,
+        {
+          notification_ids: selectedNotifications.map(Number),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
 
       setNotifications((previous) =>
         previous.filter(
@@ -464,16 +464,20 @@ export default function ManageNotifications() {
             <thead>
               <tr>
                 <th>
-                  <input
-                    type="checkbox"
-                    checked={
-                      filteredNotifications.length > 0 &&
-                      filteredNotifications.every((notification) =>
-                        selectedNotifications.includes(notification.id),
-                      )
-                    }
-                    onChange={selectAllNotifications}
-                  />
+                  <div className="mn-select-all">
+                    <input
+                      type="checkbox"
+                      checked={
+                        filteredNotifications.length > 0 &&
+                        filteredNotifications.every((notification) =>
+                          selectedNotifications.includes(notification.id),
+                        )
+                      }
+                      onChange={selectAllNotifications}
+                    />
+
+                    <span>All</span>
+                  </div>
                 </th>
 
                 <th>Notification</th>
