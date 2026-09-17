@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import DataTable from "../components/DataTable";
+import DataTable from "../../../../Common_Component/DataTable";
 
 const initialLog = [
   { id: 1, actor: "Ramesh Kulkarni", role: "Admin", action: "Promoted Anita Joshi to subadmin", timestamp: "2026-09-02 09:14" },

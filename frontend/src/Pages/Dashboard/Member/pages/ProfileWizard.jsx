@@ -51,7 +51,9 @@ export default function ProfileWizard({ onBack }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingStep1, setSavingStep1] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -121,13 +123,58 @@ export default function ProfileWizard({ onBack }) {
     setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
   };
 
-  const goNext = () => {
+  const goNext = async () => {
     setFormError("");
-    if (!profileForm.fullname.trim()) {
-      setFieldErrors({ fullname: "Name is required." });
+
+    const errs = {};
+    if (!profileForm.fullname.trim()) errs.fullname = "Name is required.";
+    if (!profileForm.date_of_birth) errs.date_of_birth = "Date of birth is required.";
+    if (!profileForm.phone.trim()) errs.phone = "Phone number is required.";
+    if (!profileForm.address.trim()) errs.address = "Address is required.";
+    if (!profileForm.aadhar_number.trim() && !existing.profile?.aadhar_number_masked) {
+      errs.aadhar_number = "Aadhar number is required.";
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      setFormError("Please fill in all required fields.");
       return;
     }
-    setStep(1);
+
+    const profile = {};
+    if (profileForm.fullname.trim() !== (existing.profile?.fullname || "")) profile.fullname = profileForm.fullname.trim();
+    if (profileForm.date_of_birth) profile.date_of_birth = profileForm.date_of_birth;
+    if (profileForm.phone.trim()) profile.phone = profileForm.phone.trim();
+    if (profileForm.address.trim()) profile.address = profileForm.address.trim();
+    if (profileForm.aadhar_number.trim()) profile.aadhar_number = profileForm.aadhar_number.trim();
+
+    try {
+      setSavingStep1(true);
+      setFieldErrors({});
+      if (Object.keys(profile).length > 0) {
+        await saveProfileWizard({ profile });
+      }
+      setStep(1);
+    } catch (err) {
+      if (err?.response?.status === 422) {
+        const detail = err.response.data?.detail;
+        if (Array.isArray(detail)) {
+          const errsFromServer = {};
+          detail.forEach((d) => {
+            const key = d.loc?.[d.loc.length - 1];
+            if (key) errsFromServer[key] = d.msg;
+          });
+          setFieldErrors(errsFromServer);
+          setFormError("Please fix the highlighted fields.");
+        } else {
+          setFormError(detail || "Some information is invalid.");
+        }
+      } else {
+        setFormError(getErrorMessage(err));
+      }
+    } finally {
+      setSavingStep1(false);
+    }
   };
 
   const goBack = () => {
@@ -167,6 +214,7 @@ export default function ProfileWizard({ onBack }) {
       setFieldErrors({});
       await saveProfileWizard(buildPayload());
       setSuccess(true);
+      setEditMode(false);
       setTimeout(() => onBack(), 1200);
     } catch (err) {
       if (err?.response?.status === 422) {
@@ -202,7 +250,17 @@ export default function ProfileWizard({ onBack }) {
 
   return (
     <div className="pw-page">
-      <h1 className="pw-title">Complete Your Profile</h1>
+      <div className="pw-header-row">
+        <h1 className="pw-title">Complete Your Profile</h1>
+        <button
+          type="button"
+          className={`pw-edit-toggle ${editMode ? "pw-edit-toggle--active" : ""}`}
+          onClick={() => setEditMode((v) => !v)}
+          title={editMode ? "Editing enabled" : "Click to edit"}
+        >
+          ✎ {editMode ? "Editing" : "Edit"}
+        </button>
+      </div>
 
       {/* Progress bar */}
       <div className="pw-progress">
@@ -229,7 +287,7 @@ export default function ProfileWizard({ onBack }) {
         {step === 0 && (
           <>
             <div className="pw-photo-row">
-              <button className="pw-photo" onClick={handlePhotoClick} disabled={photoUploading} type="button">
+              <button className="pw-photo" onClick={handlePhotoClick} disabled={photoUploading || !editMode} type="button">
                 {photoUrl ? (
                   <img src={`http://localhost:8000${photoUrl}`} alt="Profile" />
                 ) : (
@@ -254,13 +312,13 @@ export default function ProfileWizard({ onBack }) {
             <div className="pw-grid">
               <div className="pw-field">
                 <label>Full Name</label>
-                <input className="pw-input" value={profileForm.fullname} onChange={(e) => updateProfileField("fullname", e.target.value)} />
+                <input className="pw-input" value={profileForm.fullname} onChange={(e) => updateProfileField("fullname", e.target.value)} disabled={!editMode} />
                 {fieldErrors.fullname && <div className="pw-field-error">{fieldErrors.fullname}</div>}
               </div>
 
               <div className="pw-field">
                 <label>Date of Birth</label>
-                <input type="date" className="pw-input" value={profileForm.date_of_birth || ""} onChange={(e) => updateProfileField("date_of_birth", e.target.value)} />
+                <input type="date" className="pw-input" value={profileForm.date_of_birth || ""} onChange={(e) => updateProfileField("date_of_birth", e.target.value)} disabled={!editMode} />
               </div>
 
               <div className="pw-field">
@@ -270,13 +328,13 @@ export default function ProfileWizard({ onBack }) {
 
               <div className="pw-field">
                 <label>Phone Number</label>
-                <input className="pw-input" value={profileForm.phone} onChange={(e) => updateProfileField("phone", e.target.value)} />
+                <input className="pw-input" value={profileForm.phone} onChange={(e) => updateProfileField("phone", e.target.value)} disabled={!editMode} />
                 {fieldErrors.phone && <div className="pw-field-error">{fieldErrors.phone}</div>}
               </div>
 
               <div className="pw-field pw-field--wide">
                 <label>Address</label>
-                <input className="pw-input" value={profileForm.address} onChange={(e) => updateProfileField("address", e.target.value)} />
+                <input className="pw-input" value={profileForm.address} onChange={(e) => updateProfileField("address", e.target.value)} disabled={!editMode} />
               </div>
 
               <div className="pw-field pw-field--wide">
@@ -286,6 +344,7 @@ export default function ProfileWizard({ onBack }) {
                   value={profileForm.aadhar_number}
                   onChange={(e) => updateProfileField("aadhar_number", e.target.value)}
                   placeholder={existing.profile?.aadhar_number_masked || "Enter 12-digit Aadhar number"}
+                  disabled={!editMode}
                 />
                 {existing.profile?.aadhar_number_masked && (
                   <div className="pw-field-hint">On file: {existing.profile.aadhar_number_masked} — leave blank to keep it unchanged.</div>
@@ -295,8 +354,10 @@ export default function ProfileWizard({ onBack }) {
             </div>
 
             <div className="pw-actions">
-              <button className="pw-btn-outline" onClick={onBack}>Cancel</button>
-              <button className="pw-btn-primary" onClick={goNext}>Next</button>
+              <button className="pw-btn-outline" onClick={onBack} disabled={savingStep1}>Cancel</button>
+              <button className="pw-btn-primary" onClick={goNext} disabled={savingStep1}>
+                {savingStep1 ? "Saving..." : "Save & Next"}
+              </button>
             </div>
           </>
         )}
@@ -311,6 +372,7 @@ export default function ProfileWizard({ onBack }) {
                   value={bankForm.pan_number}
                   onChange={(e) => updateBankField("pan_number", e.target.value.toUpperCase())}
                   placeholder={existing.banking?.pan_number_masked || "e.g. ABCDE1234F"}
+                  disabled={!editMode}
                 />
                 {existing.banking?.pan_number_masked && (
                   <div className="pw-field-hint">On file: {existing.banking.pan_number_masked} — leave blank to keep it unchanged.</div>
@@ -325,6 +387,7 @@ export default function ProfileWizard({ onBack }) {
                   value={bankForm.account_number}
                   onChange={(e) => updateBankField("account_number", e.target.value)}
                   placeholder={existing.banking?.account_number_masked || "Enter account number"}
+                  disabled={!editMode}
                 />
                 {existing.banking?.account_number_masked && (
                   <div className="pw-field-hint">On file: {existing.banking.account_number_masked} — leave blank to keep it unchanged.</div>
@@ -334,30 +397,30 @@ export default function ProfileWizard({ onBack }) {
 
               <div className="pw-field">
                 <label>Account Holder Name</label>
-                <input className="pw-input" value={bankForm.account_holder_name} onChange={(e) => updateBankField("account_holder_name", e.target.value)} />
+                <input className="pw-input" value={bankForm.account_holder_name} onChange={(e) => updateBankField("account_holder_name", e.target.value)} disabled={!editMode} />
               </div>
 
               <div className="pw-field">
                 <label>Bank Name</label>
-                <input className="pw-input" value={bankForm.bank_name} onChange={(e) => updateBankField("bank_name", e.target.value)} />
+                <input className="pw-input" value={bankForm.bank_name} onChange={(e) => updateBankField("bank_name", e.target.value)} disabled={!editMode} />
               </div>
 
               <div className="pw-field">
                 <label>Account Type</label>
-                <select className="pw-input" value={bankForm.account_type} onChange={(e) => updateBankField("account_type", e.target.value)}>
+                <select className="pw-input" value={bankForm.account_type} onChange={(e) => updateBankField("account_type", e.target.value)} disabled={!editMode}>
                   {ACCOUNT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
 
               <div className="pw-field">
                 <label>IFSC Code</label>
-                <input className="pw-input" value={bankForm.ifsc_code} onChange={(e) => updateBankField("ifsc_code", e.target.value.toUpperCase())} placeholder="e.g. HDFC0001234" />
+                <input className="pw-input" value={bankForm.ifsc_code} onChange={(e) => updateBankField("ifsc_code", e.target.value.toUpperCase())} placeholder="e.g. HDFC0001234" disabled={!editMode} />
                 {fieldErrors.ifsc_code && <div className="pw-field-error">{fieldErrors.ifsc_code}</div>}
               </div>
 
               <div className="pw-field pw-field--wide">
                 <label>Branch Name</label>
-                <input className="pw-input" value={bankForm.branch_name} onChange={(e) => updateBankField("branch_name", e.target.value)} />
+                <input className="pw-input" value={bankForm.branch_name} onChange={(e) => updateBankField("branch_name", e.target.value)} disabled={!editMode} />
               </div>
             </div>
 

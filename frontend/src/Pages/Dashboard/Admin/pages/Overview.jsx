@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import StatsCard from "../../SuperAdmin/components/StatsCard";
+import {
+  Users,
+  Building2,
+  Mail,
+} from "lucide-react";
+import StatsCard from "../../../../Common_Component/StatsCard";
 
 const API_BASE = "http://localhost:8000";
 
@@ -24,9 +29,9 @@ export default function Overview() {
   return (
     <div className="sa-page">
       <div className="sa-stats-grid">
-        <StatsCard label="Sanghas Managed" value={sanghas.length} icon="🏛️" />
-        <StatsCard label="Total Members" value={totalMembers} icon="👥" />
-        <StatsCard label="Pending Admin Requests" value={pendingCount} icon="📩" />
+        <StatsCard label="Sanghas Managed" value={sanghas.length} icon={Building2} />
+        <StatsCard label="Total Members" value={totalMembers} icon={Users} />
+        <StatsCard label="Pending Admin Requests" value={pendingCount} icon={Mail} />
       </div>
     </div>
   );

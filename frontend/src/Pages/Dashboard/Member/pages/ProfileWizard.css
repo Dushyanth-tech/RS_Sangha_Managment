@@ -6,12 +6,45 @@
   color: var(--ink, #1c1017);
 }
 
+.pw-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
 .pw-title {
   font-family: "Fraunces", serif;
   font-size: 1.6rem;
   font-weight: 500;
   color: var(--pink-900, #4a0e2e);
-  margin: 0 0 28px;
+  margin: 0;
+}
+
+.pw-edit-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--pink-500, #c62368);
+  color: var(--pink-700, #8a1245);
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.pw-edit-toggle:hover { background: var(--blush-100, #fdeef4); }
+
+.pw-edit-toggle--active {
+  background: var(--pink-600, #a8194f);
+  border-color: var(--pink-600, #a8194f);
+  color: #fff;
 }
 
 .pw-loading { text-align: center; color: var(--muted, #7c6b73); padding: 60px 0; }
@@ -159,6 +192,8 @@
   justify-content: center;
   font-size: 0.7rem;
 }
+
+.pw-photo:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .pw-photo__label { font-size: 0.88rem; font-weight: 600; color: var(--ink, #1c1017); }
 .pw-photo__hint { font-size: 0.78rem; color: var(--muted, #7c6b73); margin-top: 2px; }

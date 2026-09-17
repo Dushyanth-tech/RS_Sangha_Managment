@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime, date
-from sqlalchemy import Integer, String, ForeignKey, Boolean, Enum, DateTime, Text, func, Date
+from sqlalchemy import Integer, String, ForeignKey, Boolean, Enum, DateTime, Text, func, Date, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.dbconnection import Base
 
@@ -18,6 +18,23 @@ class RequestStatus(str, enum.Enum):
     rejected = "REJECTED"
     not_submitted = "NOT_SUBMITTED"
 
+class NotificationType(str, enum.Enum):
+    account_verification = "Account Verification"
+    profile = "Profile"
+    announcement = "Announcement"
+    important = "Important"
+
+
+class RecipientRule(str, enum.Enum):
+    all_members = "All Members"
+    incomplete_profile = "Members Without Completed Profile"
+    missing_banking = "Members Without Banking Details"
+    incomplete_profile_or_banking = "Members Without Completed Profile or Banking Details"
+
+
+class NotificationStatus(str, enum.Enum):
+    draft = "Draft"
+    sent = "Sent"
 
 class User(Base):
     __tablename__ = "users"
@@ -125,3 +142,31 @@ class BankDetails(Base):
     ifsc_code: Mapped[str | None] = mapped_column(String(11), nullable=True)
     branch_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(150))
+    type: Mapped[NotificationType] = mapped_column(Enum(NotificationType))
+    recipient: Mapped[RecipientRule] = mapped_column(Enum(RecipientRule), default=RecipientRule.all_members)
+    message: Mapped[str] = mapped_column(Text)
+    navigation_path: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON-encoded list of steps
+    status: Mapped[NotificationStatus] = mapped_column(Enum(NotificationStatus), default=NotificationStatus.draft)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    sangha_ids: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON list of sangha ids; null/empty = All Sanghas
+
+
+class NotificationRecipient(Base):
+    """Snapshot of who actually received a notification, taken at send time."""
+    __tablename__ = "notification_recipients"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    notification_id: Mapped[int] = mapped_column(ForeignKey("notifications.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    __table_args__ = (UniqueConstraint("notification_id", "user_id", name="uq_notification_recipient"),)

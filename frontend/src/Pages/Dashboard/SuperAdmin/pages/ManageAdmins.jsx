@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import DataTable from "../components/DataTable";
-import AddAdminModal from "../components/AddAdminModal";
-import RemoveAdminModal from "../components/RemoveAdminModal";
+import DataTable from "../../../../Common_Component/DataTable";
+import AddAdminModal from "../Modal/AddAdminModal/AddAdminModal";
+import RemoveAdminModal from "../Modal/RemoveAdminModal/RemoveAdminModal";
 
 const API_BASE = "http://localhost:8000";
 

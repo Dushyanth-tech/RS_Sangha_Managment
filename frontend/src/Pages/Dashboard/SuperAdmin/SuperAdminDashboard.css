@@ -6,7 +6,7 @@
    ============================================ */
 :root {
   --pink-900: #4a0e2e;
-  --pink-700: #8a1245;   /* primary dark pink */
+  --pink-700: #8a1245;   /*primary dark pink */
   --pink-600: #a8194f;
   --pink-500: #c62368;
   --blush-100: #fdeef4;
@@ -33,16 +33,15 @@
   color: var(--ink);
 }
 
-/* ================= SIDEBAR ================= */
 .sa-sidebar {
   width: 260px;
   min-width: 260px;
-  height: 100vh;
   position: sticky;
   top: 0;
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   background: linear-gradient(160deg, var(--pink-600) 0%, var(--pink-700) 55%, var(--pink-900) 100%);
   color: #fdf1f6;
   transition: width 0.2s ease, min-width 0.2s ease;

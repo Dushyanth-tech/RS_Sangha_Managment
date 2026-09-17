@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import StatsCard from "../components/StatsCard";
-import DataTable from "../components/DataTable";
+import {
+  Users,
+  Building2,
+  Mail,
+  UserRound
+} from "lucide-react";
+import StatsCard from "../../../../Common_Component/StatsCard";
+import DataTable from "../../../../Common_Component/DataTable";
 
 const API_BASE = "http://localhost:8000";
 
@@ -49,10 +55,10 @@ export default function Overview() {
       {error && <p className="sa-error">{error}</p>}
 
       <div className="sa-stats-grid">
-        <StatsCard label="Total Admins" value={loading ? "…" : stats.totalAdmins} icon="👤" />
-        <StatsCard label="Total Sanghas" value={loading ? "…" : stats.totalSanghas} icon="🏛️" />
-        <StatsCard label="Pending Requests" value={loading ? "…" : stats.pendingRequests} icon="📩" />
-        <StatsCard label="Total Members" value={loading ? "…" : stats.totalMembers} icon="👥" />
+        <StatsCard label="Total Admins" value={loading ? "…" : stats.totalAdmins} icon={Users} />
+        <StatsCard label="Total Sanghas" value={loading ? "…" : stats.totalSanghas} icon={Building2} />
+        <StatsCard label="Pending Requests" value={loading ? "…" : stats.pendingRequests} icon={Mail} />
+        <StatsCard label="Total Members" value={loading ? "…" : stats.totalMembers} icon={UserRound} />
       </div>
 
       <div className="sa-section">

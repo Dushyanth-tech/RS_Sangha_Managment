@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import DataTable from "../../SuperAdmin/components/DataTable";
+import DataTable from "../../../../Common_Component/DataTable";
 import RequestAdminModal from "../components/RequestAdminModal";
 
 const API_BASE = "http://localhost:8000";

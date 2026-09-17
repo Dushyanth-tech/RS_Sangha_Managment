@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import DataTable from "../../SuperAdmin/components/DataTable";
+import DataTable from "../../../../Common_Component/DataTable";
 import CreateSanghaModal from "../components/CreateSanghaModal";
-import EditSanghaModal from "../../SuperAdmin/components/EditSanghaModal";
+import EditSanghaModal from "../../SuperAdmin/Modal/EditSanghaModal";
 import "./ManageSanghas.css";
 
 const API_BASE = "http://localhost:8000";

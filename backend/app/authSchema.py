@@ -148,3 +148,46 @@ class BankDetailsUpdate(BaseModel):
 class ProfileWizardUpdate(BaseModel):
     profile: ProfileDetailsUpdate | None = None
     banking: BankDetailsUpdate | None = None
+
+ALLOWED_TYPES = {"Account Verification", "Profile", "Announcement", "Important"}
+ALLOWED_RECIPIENTS = {
+    "All Members",
+    "Members Without Completed Profile",
+    "Members Without Banking Details",
+    "Members Without Completed Profile or Banking Details",
+}
+
+
+class NotificationCreate(BaseModel):
+    title: str
+    type: str = "Announcement"
+    recipient: str = "All Members"
+    message: str
+    include_path: bool = False
+    navigation_path: list[str] | None = None
+    send_now: bool = False
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v):
+        if v not in ALLOWED_TYPES:
+            raise ValueError(f"type must be one of {ALLOWED_TYPES}")
+        return v
+
+    @field_validator("recipient")
+    @classmethod
+    def validate_recipient(cls, v):
+        if v not in ALLOWED_RECIPIENTS:
+            raise ValueError(f"recipient must be one of {ALLOWED_RECIPIENTS}")
+        return v
+
+class NotificationCreate(BaseModel):
+    title: str
+    type: str = "Announcement"
+    recipient: str = "All Members"
+    sangha_ids: list[int] | None = None   # None/empty = All Sanghas
+    message: str
+    include_path: bool = False
+    navigation_path: list[str] | None = None
+    send_now: bool = False
+    # ...same validators as before

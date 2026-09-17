@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Sidebar from "./components/Sidebar";
-import Topbar from "../SuperAdmin/components/Topbar";
+import Topbar from "../../../Common_Component/Topbar"
 import Overview from "./pages/Overview";
 import ManageSanghas from "./pages/ManageSanghas";
 import AdminRequests from "./pages/AdminRequests";

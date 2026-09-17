@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import Sidebar from "./components/Sidebar";
-import Topbar from "./components/Topbar";
+import Topbar from "../../../Common_Component/Topbar";
 import Overview from "./pages/Overview";
 import ManageAdmins from "./pages/ManageAdmins";
 import ManageSanghas from "./pages/ManageSanghas";
 import SubadminRequests from "./pages/SubadminRequests";
 import ActivityLog from "./pages/ActivityLog";
+import ManageNotifications from "./pages/ManageNotifications";
 import "./SuperAdminDashboard.css";
 
 const PAGE_TITLES = {
@@ -14,6 +15,7 @@ const PAGE_TITLES = {
   sanghas: "Manage Sanghas",
   "subadmin-requests": "Subadmin Requests",
   "activity-log": "Activity Log",
+  notifications:"Manage Notification"
 };
 
 const PAGES = {
@@ -22,6 +24,7 @@ const PAGES = {
   sanghas: ManageSanghas,
   "subadmin-requests": SubadminRequests,
   "activity-log": ActivityLog,
+  notifications:ManageNotifications
 };
 
 const SuperAdminDashboard = () => {

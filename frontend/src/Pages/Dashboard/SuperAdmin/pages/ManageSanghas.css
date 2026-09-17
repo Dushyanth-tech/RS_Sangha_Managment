@@ -1,4 +1,4 @@
-:root {
+/* :root {
   --pink-900: #4a0e2e;
   --pink-700: #8a1245;
   --pink-600: #a8194f;
@@ -10,7 +10,7 @@
   --line: #ece4e7;
   --radius-md: 10px;
   --radius-sm: 4px;
-}
+} */
 
 html, body, #root { height: 100%; }
 

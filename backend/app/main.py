@@ -1,13 +1,14 @@
 from app.crypto import encrypt_value, decrypt_value, mask_last4
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload,SanghaUpdate, ProfileWizardUpdate
-from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus, BankDetails
+from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload,SanghaUpdate, ProfileWizardUpdate, NotificationCreate
+from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus, BankDetails, Notification, NotificationRecipient
 from app.dbconnection import get_db, engine, Base
 from app.auth import create_access_token, hash_password, verify_password, get_current_user
 from sqlalchemy import or_,func, select
 from sqlalchemy.orm import aliased, Session
 from datetime import datetime, timezone
+import json
 import os, uuid
 
 app = FastAPI()
@@ -1134,5 +1135,201 @@ def complete_profile(
     db.commit()
     return {"detail": "Profile updated successfully."}
 
+
+
+
+def _require_superadmin(db: Session, current_user_id):
+    user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+    if user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Only superadmin can manage notifications.")
+    return user
+
+
+def _resolve_recipient_ids(
+    db: Session,
+    rule: str,
+    sangha_ids: list[int] | None
+) -> list[int]:
+
+    query = db.query(User.id).filter(User.role == "member")
+
+    if sangha_ids:
+        query = query.filter(User.sangha_id.in_(sangha_ids))
+    else:
+        query = query.filter(User.sangha_id.is_not(None))
+
+    # Members without completed profile
+    if rule == "Members Without Completed Profile":
+
+        query = query.filter(
+            or_(
+                User.date_of_birth.is_(None),
+                User.address.is_(None),
+                User.aadhar_number.is_(None),
+            )
+        )
+
+    # Members without completed banking details
+    elif rule == "Members Without Banking Details":
+
+        incomplete_banking_users = (
+            db.query(BankDetails.user_id)
+            .filter(
+                or_(
+                    BankDetails.account_holder_name.is_(None),
+                    BankDetails.bank_name.is_(None),
+                    BankDetails.account_type.is_(None),
+                    BankDetails.ifsc_code.is_(None),
+                    BankDetails.branch_name.is_(None),
+                    BankDetails.pan_number_enc.is_(None),
+                    BankDetails.account_number_enc.is_(None),
+                )
+            )
+        )
+
+        query = query.filter(
+            or_(
+                ~User.id.in_(db.query(BankDetails.user_id)),
+                User.id.in_(incomplete_banking_users),
+            )
+        )
+
+    # Members without profile OR banking details
+    elif rule == "Members Without Completed Profile or Banking Details":
+
+        incomplete_banking_users = (
+            db.query(BankDetails.user_id)
+            .filter(
+                or_(
+                    BankDetails.account_holder_name.is_(None),
+                    BankDetails.bank_name.is_(None),
+                    BankDetails.account_type.is_(None),
+                    BankDetails.ifsc_code.is_(None),
+                    BankDetails.branch_name.is_(None),
+                    BankDetails.pan_number_enc.is_(None),
+                    BankDetails.account_number_enc.is_(None),
+                )
+            )
+        )
+
+        query = query.filter(
+            or_(
+                User.date_of_birth.is_(None),
+                User.address.is_(None),
+                User.aadhar_number.is_(None),
+                ~User.id.in_(db.query(BankDetails.user_id)),
+                User.id.in_(incomplete_banking_users),
+            )
+        )
+
+    return [row[0] for row in query.all()]
+
+
+def _serialize(db: Session, n: Notification) -> dict:
+    sangha_ids = json.loads(n.sangha_ids) if n.sangha_ids else []
+    if sangha_ids:
+        names = [s.name for s in db.query(Sanghas).filter(Sanghas.id.in_(sangha_ids)).all()]
+        sangha_label = ", ".join(names) if names else "Selected Sanghas"
+    else:
+        sangha_label = "All Sanghas"
+
+    return {
+        "id": n.id,
+        "title": n.title,
+        "type": n.type,
+        "recipient": n.recipient,
+        "sanghaLabel": sangha_label,
+        "sanghaIds": sangha_ids,
+        "status": n.status,
+        "sentAt": n.sent_at.strftime("%d %b %Y, %I:%M %p") if n.sent_at else "-",
+        "message": n.message,
+        "path": json.loads(n.navigation_path) if n.navigation_path else [],
+    }
+
+@app.get("/notifications")
+def list_notifications(db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
+    _require_superadmin(db, current_user_id)
+    rows = db.query(Notification).order_by(Notification.created_at.desc()).all()
+    return [_serialize(db, n) for n in rows]
+
+
+@app.post("/notifications")
+def create_notification(
+    payload: NotificationCreate,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    admin = _require_superadmin(db, current_user_id)
+
+    if not payload.title.strip() or not payload.message.strip():
+        raise HTTPException(status_code=422, detail="Title and message are required.")
+
+    notification = Notification(
+        title=payload.title.strip(),
+        type=payload.type,
+        recipient=payload.recipient,
+        sangha_ids=json.dumps(payload.sangha_ids) if payload.sangha_ids else None,
+        message=payload.message.strip(),
+        navigation_path=json.dumps(payload.navigation_path) if (payload.include_path and payload.navigation_path) else None,
+        status="Sent" if payload.send_now else "Draft",
+        created_by=admin.id,
+        sent_at=datetime.now(timezone.utc) if payload.send_now else None,
+    )
+    db.add(notification)
+    db.flush()
+
+    if payload.send_now:
+        for uid in _resolve_recipient_ids(db, payload.recipient, payload.sangha_ids):
+            db.add(NotificationRecipient(notification_id=notification.id, user_id=uid))
+
+    db.commit()
+    db.refresh(notification)
+    return _serialize(db, notification)
+
+
+# ---------- Member-facing (for when the Member Notifications page connects) ----------
+
+@app.get("/me/notifications")
+def get_my_notifications(db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
+    rows = (
+        db.query(NotificationRecipient, Notification)
+        .join(Notification, NotificationRecipient.notification_id == Notification.id)
+        .filter(NotificationRecipient.user_id == int(current_user_id))
+        .order_by(Notification.sent_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": recipient.id,
+            "title": notif.title,
+            "message": notif.message,
+            "type": notif.type,
+            "path": json.loads(notif.navigation_path) if notif.navigation_path else [],
+            "sentAt": notif.sent_at.strftime("%d %b %Y, %I:%M %p") if notif.sent_at else "-",
+            "isRead": recipient.is_read,
+        }
+        for recipient, notif in rows
+    ]
+
+
+@app.patch("/me/notifications/{recipient_id}/read")
+def mark_notification_read(
+    recipient_id: int,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    recipient = (
+        db.query(NotificationRecipient)
+        .filter(NotificationRecipient.id == recipient_id, NotificationRecipient.user_id == int(current_user_id))
+        .first()
+    )
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Notification not found.")
+    recipient.is_read = True
+    recipient.read_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"detail": "Marked as read"}
 
 Base.metadata.create_all(bind=engine)
