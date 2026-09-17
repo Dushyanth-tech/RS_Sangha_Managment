@@ -245,3 +245,33 @@ html, body, #root { height: 100%; }
   color: #b3261e;
   flex-wrap: wrap;
 }
+
+.mn-clear-btn {
+  white-space: nowrap;
+  border-color: #b42318;
+  color: #b42318;
+}
+
+.mn-clear-btn:hover:not(:disabled) {
+  background: #b42318;
+  color: #ffffff;
+}
+
+.mn-clear-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mn-filter-bar input[type="checkbox"],
+.sa-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--pink-600);
+}
+
+.sa-table th:first-child,
+.sa-table td:first-child {
+  width: 45px;
+  text-align: center;
+}

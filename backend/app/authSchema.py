@@ -191,3 +191,7 @@ class NotificationCreate(BaseModel):
     navigation_path: list[str] | None = None
     send_now: bool = False
     # ...same validators as before
+
+
+class ClearNotificationsRequest(BaseModel):
+    notification_ids: list[int]

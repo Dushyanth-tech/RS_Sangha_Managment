@@ -1,7 +1,7 @@
 from app.crypto import encrypt_value, decrypt_value, mask_last4
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload,SanghaUpdate, ProfileWizardUpdate, NotificationCreate
+from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload,SanghaUpdate, ProfileWizardUpdate, NotificationCreate, ClearNotificationsRequest
 from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus, BankDetails, Notification, NotificationRecipient
 from app.dbconnection import get_db, engine, Base
 from app.auth import create_access_token, hash_password, verify_password, get_current_user
@@ -1331,5 +1331,69 @@ def mark_notification_read(
     recipient.read_at = datetime.now(timezone.utc)
     db.commit()
     return {"detail": "Marked as read"}
+
+@app.delete("/notifications/{notification_id}")
+def delete_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    _require_superadmin(db, current_user_id)
+
+    notification = (
+        db.query(Notification)
+        .filter(Notification.id == notification_id)
+        .first()
+    )
+
+    if not notification:
+        raise HTTPException(
+            status_code=404,
+            detail="Notification not found."
+        )
+
+    # Delete related recipients first
+    db.query(NotificationRecipient).filter(
+        NotificationRecipient.notification_id == notification_id
+    ).delete(synchronize_session=False)
+
+    db.delete(notification)
+    db.commit()
+
+    return {"detail": "Notification deleted successfully."}
+
+
+@app.post("/notifications/clear-selected")
+def clear_selected_notifications(
+    payload: ClearNotificationsRequest,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    _require_superadmin(db, current_user_id)
+
+    if not payload.notification_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="No notifications selected."
+        )
+
+    db.query(NotificationRecipient).filter(
+        NotificationRecipient.notification_id.in_(
+            payload.notification_ids
+        )
+    ).delete(synchronize_session=False)
+
+    deleted_count = (
+        db.query(Notification)
+        .filter(Notification.id.in_(payload.notification_ids))
+        .delete(synchronize_session=False)
+    )
+
+    db.commit()
+
+    return {
+        "detail": "Selected notifications cleared successfully.",
+        "deleted_count": deleted_count,
+    }
 
 Base.metadata.create_all(bind=engine)

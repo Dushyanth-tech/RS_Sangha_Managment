@@ -42,6 +42,9 @@ export default function ManageNotifications() {
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const [selectedNotifications, setSelectedNotifications] = useState([]);
+  const [clearing, setClearing] = useState(false);
+
   const token = () => localStorage.getItem("access_token");
 
   const fetchNotifications = async () => {
@@ -54,7 +57,9 @@ export default function ManageNotifications() {
       setNotifications(res.data);
     } catch (error) {
       console.error("Error fetching notifications:", error);
-      setFetchError(error.response?.data?.detail || "Failed to load notifications.");
+      setFetchError(
+        error.response?.data?.detail || "Failed to load notifications.",
+      );
     } finally {
       setFetching(false);
     }
@@ -96,8 +101,12 @@ export default function ManageNotifications() {
   }, [notifications, search, statusFilter, typeFilter]);
 
   const totalNotifications = notifications.length;
-  const sentCount = notifications.filter((item) => item.status === "Sent").length;
-  const draftCount = notifications.filter((item) => item.status === "Draft").length;
+  const sentCount = notifications.filter(
+    (item) => item.status === "Sent",
+  ).length;
+  const draftCount = notifications.filter(
+    (item) => item.status === "Draft",
+  ).length;
 
   const updateForm = (field, value) => {
     setForm((previous) => ({ ...previous, [field]: value }));
@@ -129,7 +138,9 @@ export default function ManageNotifications() {
     }
 
     if (form.sanghaMode === "specific" && form.selectedSanghaIds.length === 0) {
-      setFormError("Please select at least one Sangha, or choose \"All Sanghas\".");
+      setFormError(
+        'Please select at least one Sangha, or choose "All Sanghas".',
+      );
       return;
     }
 
@@ -143,41 +154,113 @@ export default function ManageNotifications() {
           title: form.title.trim(),
           type: form.type,
           recipient: form.recipient,
-          sangha_ids: form.sanghaMode === "specific" ? form.selectedSanghaIds : null,
+          sangha_ids:
+            form.sanghaMode === "specific" ? form.selectedSanghaIds : null,
           message: form.message.trim(),
           include_path: form.includePath,
           navigation_path: form.includePath ? verificationPath : null,
           send_now: sendNow,
         },
-        { headers: { Authorization: `Bearer ${token()}` } }
+        { headers: { Authorization: `Bearer ${token()}` } },
       );
 
       setNotifications((previous) => [res.data, ...previous]);
       closeModal();
     } catch (error) {
       console.error("Error saving notification:", error);
-      setFormError(error.response?.data?.detail || "Failed to save notification.");
+      setFormError(
+        error.response?.data?.detail || "Failed to save notification.",
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
+  const toggleNotificationSelection = (notificationId) => {
+    setSelectedNotifications((previous) =>
+      previous.includes(notificationId)
+        ? previous.filter((id) => id !== notificationId)
+        : [...previous, notificationId],
+    );
+  };
+
+  const selectAllNotifications = () => {
+    const filteredIds = filteredNotifications.map(
+      (notification) => notification.id,
+    );
+
+    const allSelected = filteredIds.every((id) =>
+      selectedNotifications.includes(id),
+    );
+
+    if (allSelected) {
+      setSelectedNotifications((previous) =>
+        previous.filter((id) => !filteredIds.includes(id)),
+      );
+    } else {
+      setSelectedNotifications((previous) => [
+        ...new Set([...previous, ...filteredIds]),
+      ]);
+    }
+  };
+
+  const clearSelectedNotifications = async () => {
+    if (selectedNotifications.length === 0) {
+      alert("Please select at least one notification.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to clear ${selectedNotifications.length} notification(s)?`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setClearing(true);
+
+      await axios.post(
+  `${API_BASE}/notifications/clear-selected`,
+  {
+    notification_ids: selectedNotifications.map(Number),
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      "Content-Type": "application/json",
+    },
+  }
+);
+
+      setNotifications((previous) =>
+        previous.filter(
+          (notification) => !selectedNotifications.includes(notification.id),
+        ),
+      );
+
+      setSelectedNotifications([]);
+    } catch (error) {
+      console.error("Error clearing notifications:", error);
+
+      alert(error.response?.data?.detail || "Failed to clear notifications.");
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div className="mn-page">
-
       {/* ================= PAGE HEADER ================= */}
 
       <div className="mn-page-header">
         <div>
           <p className="mn-eyebrow">SUPERADMIN</p>
 
-          <h1 className="mn-title">
-            Manage Notifications
-          </h1>
+          <h1 className="mn-title">Manage Notifications</h1>
 
           <p className="mn-subtitle">
-            Send important announcements and account-related
-            instructions to members.
+            Send important announcements and account-related instructions to
+            members.
           </p>
         </div>
 
@@ -202,16 +285,11 @@ export default function ManageNotifications() {
       {/* ================= STATS ================= */}
 
       <div className="sa-stats-grid mn-stats">
-
         <div className="sa-stat-card">
-          <div className="sa-stat-card__icon">
-            🔔
-          </div>
+          <div className="sa-stat-card__icon">🔔</div>
 
           <div className="sa-stat-card__body">
-            <span className="sa-stat-card__label">
-              Total Notifications
-            </span>
+            <span className="sa-stat-card__label">Total Notifications</span>
 
             <span className="sa-stat-card__value">
               {fetching ? "..." : totalNotifications}
@@ -220,14 +298,10 @@ export default function ManageNotifications() {
         </div>
 
         <div className="sa-stat-card">
-          <div className="sa-stat-card__icon">
-            ✓
-          </div>
+          <div className="sa-stat-card__icon">✓</div>
 
           <div className="sa-stat-card__body">
-            <span className="sa-stat-card__label">
-              Sent
-            </span>
+            <span className="sa-stat-card__label">Sent</span>
 
             <span className="sa-stat-card__value">
               {fetching ? "..." : sentCount}
@@ -236,42 +310,31 @@ export default function ManageNotifications() {
         </div>
 
         <div className="sa-stat-card">
-          <div className="sa-stat-card__icon">
-            ◷
-          </div>
+          <div className="sa-stat-card__icon">◷</div>
 
           <div className="sa-stat-card__body">
-            <span className="sa-stat-card__label">
-              Drafts
-            </span>
+            <span className="sa-stat-card__label">Drafts</span>
 
             <span className="sa-stat-card__value">
               {fetching ? "..." : draftCount}
             </span>
           </div>
         </div>
-
       </div>
 
       {/* ================= IMPORTANT NOTICE ================= */}
 
       <section className="mn-featured">
-
-        <div className="mn-featured-icon">
-          ✓
-        </div>
+        <div className="mn-featured-icon">✓</div>
 
         <div className="mn-featured-content">
-
           <div className="mn-featured-top">
             <div>
               <span className="mn-featured-label">
                 RECOMMENDED MEMBER NOTIFICATION
               </span>
 
-              <h2>
-                Please verify your account
-              </h2>
+              <h2>Please verify your account</h2>
             </div>
 
             <span className="sa-badge sa-badge--pending">
@@ -280,37 +343,28 @@ export default function ManageNotifications() {
           </div>
 
           <p>
-            Please complete your personal and banking details
-            to verify your account and keep your RS-Sangha
-            profile up to date.
+            Please complete your personal and banking details to verify your
+            account and keep your RS-Sangha profile up to date.
           </p>
 
           <div className="mn-path">
-
-            <span className="mn-path-label">
-              Member navigation path
-            </span>
+            <span className="mn-path-label">Member navigation path</span>
 
             <div className="mn-path-steps">
               {verificationPath.map((step, index) => (
                 <React.Fragment key={step}>
                   <div className="mn-path-step">
-                    <span className="mn-path-number">
-                      {index + 1}
-                    </span>
+                    <span className="mn-path-number">{index + 1}</span>
 
                     <span>{step}</span>
                   </div>
 
                   {index < verificationPath.length - 1 && (
-                    <span className="mn-path-arrow">
-                      →
-                    </span>
+                    <span className="mn-path-arrow">→</span>
                   )}
                 </React.Fragment>
               ))}
             </div>
-
           </div>
 
           <div className="mn-featured-actions">
@@ -320,7 +374,8 @@ export default function ManageNotifications() {
                 setForm({
                   title: "Please verify your account",
                   type: "Account Verification",
-                  recipient: "Members Without Completed Profile or Banking Details",
+                  recipient:
+                    "Members Without Completed Profile or Banking Details",
                   sanghaMode: "all",
                   selectedSanghaIds: [],
                   message:
@@ -341,19 +396,15 @@ export default function ManageNotifications() {
               Preview
             </button>
           </div>
-
         </div>
       </section>
 
       {/* ================= NOTIFICATION LIST ================= */}
 
       <section className="sa-section">
-
         <div className="sa-section__header">
           <div>
-            <h2 className="sa-section__title">
-              Notification History
-            </h2>
+            <h2 className="sa-section__title">Notification History</h2>
 
             <p className="mn-section-description">
               View and manage notifications created by the SuperAdmin.
@@ -364,7 +415,6 @@ export default function ManageNotifications() {
         {/* Filters */}
 
         <div className="mn-filter-bar">
-
           <div className="mn-search-wrapper">
             <span>⌕</span>
 
@@ -390,22 +440,42 @@ export default function ManageNotifications() {
             onChange={(e) => setTypeFilter(e.target.value)}
           >
             <option value="All">All Types</option>
-            <option value="Account Verification">
-              Account Verification
-            </option>
+            <option value="Account Verification">Account Verification</option>
             <option value="Profile">Profile</option>
+            <option value="Announcement">Announcement</option>
+            <option value="Important">Important</option>
           </select>
 
+          <button
+            className="sa-btn-outline mn-clear-btn"
+            onClick={clearSelectedNotifications}
+            disabled={selectedNotifications.length === 0 || clearing}
+          >
+            {clearing
+              ? "Clearing..."
+              : `Clear Selected (${selectedNotifications.length})`}
+          </button>
         </div>
 
         {/* Table */}
 
         <div className="sa-table-wrapper mn-table-wrapper">
-
           <table className="sa-table">
-
             <thead>
               <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    checked={
+                      filteredNotifications.length > 0 &&
+                      filteredNotifications.every((notification) =>
+                        selectedNotifications.includes(notification.id),
+                      )
+                    }
+                    onChange={selectAllNotifications}
+                  />
+                </th>
+
                 <th>Notification</th>
                 <th>Type</th>
                 <th>Sangha</th>
@@ -415,9 +485,7 @@ export default function ManageNotifications() {
                 <th>Action</th>
               </tr>
             </thead>
-
             <tbody>
-
               {fetching ? (
                 <tr>
                   <td colSpan="7" className="sa-table__empty">
@@ -426,51 +494,32 @@ export default function ManageNotifications() {
                 </tr>
               ) : filteredNotifications.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan="7"
-                    className="sa-table__empty"
-                  >
+                  <td colSpan="7" className="sa-table__empty">
                     No notifications found.
                   </td>
                 </tr>
               ) : (
                 filteredNotifications.map((notification) => (
-
                   <tr key={notification.id}>
-
                     <td>
-                      <div className="mn-notification-cell">
-
-                        <div className="mn-notification-icon">
-                          🔔
-                        </div>
-
-                        <div>
-                          <strong>
-                            {notification.title}
-                          </strong>
-
-                          <span>
-                            {notification.message}
-                          </span>
-                        </div>
-
-                      </div>
+                      <input
+                        type="checkbox"
+                        checked={selectedNotifications.includes(
+                          notification.id,
+                        )}
+                        onChange={() =>
+                          toggleNotificationSelection(notification.id)
+                        }
+                      />
                     </td>
 
                     <td>
-                      <span className="mn-type">
-                        {notification.type}
-                      </span>
+                      <span className="mn-type">{notification.type}</span>
                     </td>
 
-                    <td>
-                      {notification.sanghaLabel || "All Sanghas"}
-                    </td>
+                    <td>{notification.sanghaLabel || "All Sanghas"}</td>
 
-                    <td>
-                      {notification.recipient}
-                    </td>
+                    <td>{notification.recipient}</td>
 
                     <td>
                       <span
@@ -484,9 +533,7 @@ export default function ManageNotifications() {
                       </span>
                     </td>
 
-                    <td>
-                      {notification.sentAt}
-                    </td>
+                    <td>{notification.sentAt}</td>
 
                     <td>
                       <button
@@ -496,11 +543,12 @@ export default function ManageNotifications() {
                             title: notification.title,
                             type: notification.type,
                             recipient: notification.recipient,
-                            sanghaMode: notification.sanghaIds?.length ? "specific" : "all",
+                            sanghaMode: notification.sanghaIds?.length
+                              ? "specific"
+                              : "all",
                             selectedSanghaIds: notification.sanghaIds || [],
                             message: notification.message,
-                            includePath:
-                              notification.path.length > 0,
+                            includePath: notification.path.length > 0,
                           });
 
                           setShowPreview(true);
@@ -509,18 +557,12 @@ export default function ManageNotifications() {
                         View
                       </button>
                     </td>
-
                   </tr>
-
                 ))
               )}
-
             </tbody>
-
           </table>
-
         </div>
-
       </section>
 
       {/* ================= SEND MODAL ================= */}
@@ -534,23 +576,14 @@ export default function ManageNotifications() {
             }
           }}
         >
-
           <div className="mn-modal">
-
             <div className="mn-modal-header">
-
               <div>
-                <span className="mn-eyebrow">
-                  CREATE NOTIFICATION
-                </span>
+                <span className="mn-eyebrow">CREATE NOTIFICATION</span>
 
-                <h2>
-                  Send Notification
-                </h2>
+                <h2>Send Notification</h2>
 
-                <p>
-                  Create an announcement for your members.
-                </p>
+                <p>Create an announcement for your members.</p>
               </div>
 
               <button
@@ -560,11 +593,9 @@ export default function ManageNotifications() {
               >
                 ×
               </button>
-
             </div>
 
             <div className="mn-modal-body">
-
               {formError && (
                 <div className="sa-error" style={{ marginBottom: "1rem" }}>
                   {formError}
@@ -572,93 +603,53 @@ export default function ManageNotifications() {
               )}
 
               <div className="mn-form-group">
-
-                <label>
-                  Notification Title
-                </label>
+                <label>Notification Title</label>
 
                 <input
                   type="text"
                   placeholder="Enter notification title"
                   value={form.title}
-                  onChange={(e) =>
-                    updateForm("title", e.target.value)
-                  }
+                  onChange={(e) => updateForm("title", e.target.value)}
                   disabled={submitting}
                 />
-
               </div>
 
               <div className="mn-form-row">
-
                 <div className="mn-form-group">
-
-                  <label>
-                    Notification Type
-                  </label>
+                  <label>Notification Type</label>
 
                   <select
                     value={form.type}
-                    onChange={(e) =>
-                      updateForm("type", e.target.value)
-                    }
+                    onChange={(e) => updateForm("type", e.target.value)}
                     disabled={submitting}
                   >
-                    <option>
-                      Account Verification
-                    </option>
-                    <option>
-                      Profile
-                    </option>
-                    <option>
-                      Announcement
-                    </option>
-                    <option>
-                      Important
-                    </option>
+                    <option>Account Verification</option>
+                    <option>Profile</option>
+                    <option>Announcement</option>
+                    <option>Important</option>
                   </select>
-
                 </div>
 
                 <div className="mn-form-group">
-
-                  <label>
-                    Send To
-                  </label>
+                  <label>Send To</label>
 
                   <select
                     value={form.recipient}
-                    onChange={(e) =>
-                      updateForm(
-                        "recipient",
-                        e.target.value
-                      )
-                    }
+                    onChange={(e) => updateForm("recipient", e.target.value)}
                     disabled={submitting}
                   >
-                    <option>
-                      All Members
-                    </option>
-                    <option>
-                      Members Without Completed Profile
-                    </option>
-                    <option>
-                      Members Without Banking Details
-                    </option>
+                    <option>All Members</option>
+                    <option>Members Without Completed Profile</option>
+                    <option>Members Without Banking Details</option>
                     <option>
                       Members Without Completed Profile or Banking Details
                     </option>
                   </select>
-
                 </div>
-
               </div>
 
               <div className="mn-form-group">
-
-                <label>
-                  Sangha
-                </label>
+                <label>Sangha</label>
 
                 <div className="mn-sangha-mode">
                   <label className="mn-radio">
@@ -687,12 +678,19 @@ export default function ManageNotifications() {
                 {form.sanghaMode === "specific" && (
                   <div className="mn-sangha-list">
                     {sanghasLoading ? (
-                      <div className="mn-sangha-list__empty">Loading sanghas...</div>
+                      <div className="mn-sangha-list__empty">
+                        Loading sanghas...
+                      </div>
                     ) : sanghas.length === 0 ? (
-                      <div className="mn-sangha-list__empty">No sanghas found.</div>
+                      <div className="mn-sangha-list__empty">
+                        No sanghas found.
+                      </div>
                     ) : (
                       sanghas.map((sangha) => (
-                        <label key={sangha.id} className="mn-checkbox mn-sangha-item">
+                        <label
+                          key={sangha.id}
+                          className="mn-checkbox mn-sangha-item"
+                        >
                           <input
                             type="checkbox"
                             checked={form.selectedSanghaIds.includes(sangha.id)}
@@ -705,83 +703,51 @@ export default function ManageNotifications() {
                     )}
                   </div>
                 )}
-
               </div>
 
               <div className="mn-form-group">
-
-                <label>
-                  Message
-                </label>
+                <label>Message</label>
 
                 <textarea
                   rows="5"
                   placeholder="Write your notification..."
                   value={form.message}
-                  onChange={(e) =>
-                    updateForm(
-                      "message",
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => updateForm("message", e.target.value)}
                   disabled={submitting}
                 />
-
               </div>
 
               <label className="mn-checkbox">
-
                 <input
                   type="checkbox"
                   checked={form.includePath}
-                  onChange={(e) =>
-                    updateForm(
-                      "includePath",
-                      e.target.checked
-                    )
-                  }
+                  onChange={(e) => updateForm("includePath", e.target.checked)}
                   disabled={submitting}
                 />
 
-                <span>
-                  Include member navigation instructions
-                </span>
-
+                <span>Include member navigation instructions</span>
               </label>
 
               {form.includePath && (
                 <div className="mn-form-path">
-
                   <div className="mn-form-path-title">
                     Member navigation path
                   </div>
 
                   <div className="mn-form-path-list">
+                    {verificationPath.map((step, index) => (
+                      <div className="mn-form-path-item" key={step}>
+                        <span>{index + 1}</span>
 
-                    {verificationPath.map(
-                      (step, index) => (
-                        <div
-                          className="mn-form-path-item"
-                          key={step}
-                        >
-                          <span>
-                            {index + 1}
-                          </span>
-
-                          {step}
-                        </div>
-                      )
-                    )}
-
+                        {step}
+                      </div>
+                    ))}
                   </div>
-
                 </div>
               )}
-
             </div>
 
             <div className="mn-modal-footer">
-
               <button
                 className="sa-btn-outline"
                 onClick={closeModal}
@@ -805,11 +771,8 @@ export default function ManageNotifications() {
               >
                 {submitting ? "Sending..." : "Send Notification"}
               </button>
-
             </div>
-
           </div>
-
         </div>
       )}
 
@@ -824,103 +787,64 @@ export default function ManageNotifications() {
             }
           }}
         >
-
           <div className="mn-preview-modal">
-
             <div className="mn-preview-header">
-
               <div>
-                <span className="mn-eyebrow">
-                  MEMBER PREVIEW
-                </span>
+                <span className="mn-eyebrow">MEMBER PREVIEW</span>
 
-                <h2>
-                  Notification Preview
-                </h2>
+                <h2>Notification Preview</h2>
               </div>
 
               <button
                 className="mn-close"
-                onClick={() =>
-                  setShowPreview(false)
-                }
+                onClick={() => setShowPreview(false)}
               >
                 ×
               </button>
-
             </div>
 
             <div className="mn-member-notification">
-
-              <div className="mn-member-notification-icon">
-                🔔
-              </div>
+              <div className="mn-member-notification-icon">🔔</div>
 
               <div>
-
                 <div className="mn-member-notification-meta">
                   RS-Sangha
                   <span>•</span>
                   Just now
                 </div>
 
-                <h3>
-                  {form.title ||
-                    "Please verify your account"}
-                </h3>
+                <h3>{form.title || "Please verify your account"}</h3>
 
                 <p>
                   {form.message ||
                     "Please complete your personal and banking details to verify your account."}
                 </p>
-
               </div>
-
             </div>
 
             {form.includePath && (
               <div className="mn-preview-path">
-
-                <h3>
-                  How to complete your details
-                </h3>
+                <h3>How to complete your details</h3>
 
                 <div className="mn-preview-path-list">
+                  {verificationPath.map((step, index) => (
+                    <React.Fragment key={step}>
+                      <div className="mn-preview-path-step">
+                        <span>{index + 1}</span>
 
-                  {verificationPath.map(
-                    (step, index) => (
-                      <React.Fragment key={step}>
+                        <strong>{step}</strong>
+                      </div>
 
-                        <div className="mn-preview-path-step">
-
-                          <span>
-                            {index + 1}
-                          </span>
-
-                          <strong>
-                            {step}
-                          </strong>
-
-                        </div>
-
-                        {index <
-                          verificationPath.length - 1 && (
-                          <div className="mn-preview-arrow">
-                            ↓
-                          </div>
-                        )}
-
-                      </React.Fragment>
-                    )
-                  )}
-
+                      {index < verificationPath.length - 1 && (
+                        <div className="mn-preview-arrow">↓</div>
+                      )}
+                    </React.Fragment>
+                  ))}
                 </div>
-
               </div>
             )}
 
             <div className="mn-preview-footer">
-
               <span>
                 {form.sanghaMode === "all"
                   ? "All Sanghas"
@@ -941,14 +865,10 @@ export default function ManageNotifications() {
               >
                 Edit Notification
               </button>
-
             </div>
-
           </div>
-
         </div>
       )}
-
     </div>
   );
 }
