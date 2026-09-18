@@ -1428,4 +1428,110 @@ def clear_selected_notifications(
         "deleted_count": deleted_count,
     }
 
+def _require_superadmin(db: Session, current_user_id):
+    user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+    if user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Only superadmin can access this.")
+    return user
+
+
+@app.get("/superadmin/members")
+def list_members(db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
+    _require_superadmin(db, current_user_id)
+
+    sangha = aliased(Sanghas)
+    admin = aliased(User)
+
+    rows = (
+        db.query(User, sangha.name, admin.fullname)
+        .join(BankDetails, BankDetails.user_id == User.id)  # inner join — excludes members with no banking row at all
+        .outerjoin(sangha, User.sangha_id == sangha.id)
+        .outerjoin(admin, sangha.admin_id == admin.id)
+        .filter(
+            User.role == "member",
+            User.date_of_birth.is_not(None),
+            User.address.is_not(None),
+            User.aadhar_number.is_not(None),
+            BankDetails.pan_number_enc.is_not(None),
+            BankDetails.account_number_enc.is_not(None),
+        )
+        .all()
+    )
+
+    return [
+        {
+            "id": u.id,
+            "name": u.fullname,
+            "email": u.email,
+            "phone": u.phone,
+            "sanghaName": sangha_name or "-",
+            "adminName": admin_name or "-",
+            "isVerified": u.isVerified,
+        }
+        for u, sangha_name, admin_name in rows
+    ]
+
+@app.get("/superadmin/members/{member_id}")
+def get_member_detail(
+    member_id: int,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    _require_superadmin(db, current_user_id)
+
+    member = db.query(User).filter(User.id == member_id, User.role == "member").first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found.")
+
+    sangha_name = None
+    if member.sangha_id:
+        sangha = db.query(Sanghas).filter(Sanghas.id == member.sangha_id).first()
+        sangha_name = sangha.name if sangha else None
+
+    bank = db.query(BankDetails).filter(BankDetails.user_id == member.id).first()
+
+    return {
+        "id": member.id,
+        "isVerified": member.isVerified,
+        "profile": {
+            "fullname": member.fullname,
+            "email": member.email,
+            "phone": member.phone,
+            "address": member.address,
+            "date_of_birth": member.date_of_birth,
+            "aadhar_number": member.aadhar_number,
+            "profile_photo_url": member.profile_photo_url,
+            "sanghaName": sangha_name or "-",
+        },
+        "banking": {
+            "pan_number": decrypt_value(bank.pan_number_enc) if bank and bank.pan_number_enc else None,
+            "account_number": decrypt_value(bank.account_number_enc) if bank and bank.account_number_enc else None,
+            "account_holder_name": bank.account_holder_name if bank else None,
+            "bank_name": bank.bank_name if bank else None,
+            "account_type": bank.account_type if bank else None,
+            "ifsc_code": bank.ifsc_code if bank else None,
+            "branch_name": bank.branch_name if bank else None,
+        } if bank else None,
+    }
+
+
+@app.post("/superadmin/members/{member_id}/verify")
+def verify_member(
+    member_id: int,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    _require_superadmin(db, current_user_id)
+
+    member = db.query(User).filter(User.id == member_id, User.role == "member").first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found.")
+
+    member.isVerified = True
+    db.commit()
+
+    return {"detail": "Member verified", "isVerified": True}
+
 Base.metadata.create_all(bind=engine)

@@ -4,6 +4,7 @@ import Topbar from "../../../Common_Component/Topbar";
 import Overview from "./pages/Overview";
 import ManageAdmins from "./pages/ManageAdmins";
 import ManageSanghas from "./pages/ManageSanghas";
+import ManageMembers from "./pages/ManageMembers";
 import SubadminRequests from "./pages/SubadminRequests";
 import ActivityLog from "./pages/ActivityLog";
 import ManageNotifications from "./pages/ManageNotifications";
@@ -13,18 +14,20 @@ const PAGE_TITLES = {
   overview: "Dashboard",
   admins: "Manage Admins",
   sanghas: "Manage Sanghas",
+  members:"Manage Members",
   "subadmin-requests": "Subadmin Requests",
+  notifications:"Manage Notification",
   "activity-log": "Activity Log",
-  notifications:"Manage Notification"
 };
 
 const PAGES = {
   overview: Overview,
   admins: ManageAdmins,
   sanghas: ManageSanghas,
+  members:ManageMembers,
   "subadmin-requests": SubadminRequests,
+  notifications:ManageNotifications,
   "activity-log": ActivityLog,
-  notifications:ManageNotifications
 };
 
 const SuperAdminDashboard = () => {

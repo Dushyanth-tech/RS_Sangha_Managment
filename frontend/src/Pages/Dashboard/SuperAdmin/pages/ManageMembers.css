@@ -1,0 +1,148 @@
+.mm-subtitle {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.mm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 16, 23, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.mm-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 88vh;
+  background: #fff;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(74, 14, 46, 0.25);
+  display: flex;
+  flex-direction: column;
+}
+
+.mm-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.mm-modal__header h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--pink-900);
+}
+
+.mm-modal__close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.mm-modal__body {
+  padding: 20px 22px;
+  overflow-y: auto;
+}
+
+.mm-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 22px;
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.mm-loading {
+  text-align: center;
+  color: var(--muted);
+  padding: 30px 0;
+}
+
+.mm-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mm-photo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.mm-photo--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--blush-100);
+  color: var(--pink-700);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.mm-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.mm-section {
+  margin-bottom: 20px;
+}
+
+.mm-section h4 {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  color: var(--pink-900);
+  margin: 0 0 12px;
+}
+
+.mm-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.mm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mm-field--wide { grid-column: 1 / -1; }
+
+.mm-field span {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.mm-field strong {
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.mm-empty-note {
+  font-size: 0.84rem;
+  color: var(--muted);
+  font-style: italic;
+}

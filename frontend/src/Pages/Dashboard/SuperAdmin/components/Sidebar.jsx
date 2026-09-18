@@ -1,6 +1,7 @@
 import React from "react";
 import {
   House,
+  ShieldCheck,
   Users,
   Building2,
   Mail,
@@ -10,11 +11,12 @@ import {
 
 const NAV_ITEMS = [
   { key: "overview", label: "Overview", icon: House },
-  { key: "admins", label: "Manage Admins", icon: Users },
+  { key: "admins", label: "Manage Admins", icon: ShieldCheck },
   { key: "sanghas", label: "Manage Sanghas", icon: Building2 },
+  { key: "members", label: "Manage Members", icon: Users },
   { key: "subadmin-requests", label: "Subadmin Requests", icon: Mail },
-  { key: "activity-log", label: "Activity Log", icon: ClipboardList },
   { key: "notifications", label: "Manage Notifications", icon: Bell },
+  { key: "activity-log", label: "Activity Log", icon: ClipboardList },
 ];
 
 export default function Sidebar({ activePage, onNavigate, collapsed }) {
