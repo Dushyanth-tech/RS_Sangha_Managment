@@ -1,25 +1,19 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../../api/axiosInstance"; // ⚠️ verify this matches this file's actual depth
 import DataTable from "../../../../Common_Component/DataTable";
 import AddAdminModal from "../Modal/AddAdminModal/AddAdminModal";
 import RemoveAdminModal from "../Modal/RemoveAdminModal/RemoveAdminModal";
-
-const API_BASE = "http://localhost:8000";
 
 export default function ManageAdmins() {
   const [admins, setAdmins] = useState([]);
   const [fetching, setFetching] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [removeTarget, setRemoveTarget] = useState(null); // admin row being edited
-
-  const token = () => localStorage.getItem("access_token");
+  const [removeTarget, setRemoveTarget] = useState(null);
 
   const fetchAdmins = async () => {
     try {
       setFetching(true);
-      const res = await axios.get(`${API_BASE}/admins`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      const res = await api.get(`/admins`);
       setAdmins(res.data);
     } catch (error) {
       console.error("Error fetching admins:", error);
@@ -52,7 +46,6 @@ export default function ManageAdmins() {
   const handleOpenRemoveModal = (row) => setRemoveTarget(row);
   const handleCloseRemoveModal = () => setRemoveTarget(null);
 
-  // Called after modal successfully unassigns admin from selected sanghas
   const handleSanghasRemoved = (adminId, removedSanghaIds) => {
     setAdmins((prev) =>
       prev.map((a) =>
@@ -83,9 +76,7 @@ export default function ManageAdmins() {
             render: (row) => (
               <span
                 className={`sa-badge ${
-                  row.status === "active"
-                    ? "sa-badge--approved"
-                    : "sa-badge--rejected"
+                  row.status === "active" ? "sa-badge--approved" : "sa-badge--rejected"
                 }`}
               >
                 {row.status}
@@ -97,16 +88,10 @@ export default function ManageAdmins() {
         emptyText={fetching ? "Loading..." : "No records found"}
         actions={(row) => (
           <>
-            <button
-              className="sa-btn-outline"
-              style={{ marginRight: "0.5rem" }}
-            >
+            <button className="sa-btn-outline" style={{ marginRight: "0.5rem" }}>
               Edit
             </button>
-            <button
-              className="sa-btn-outline"
-              onClick={() => handleOpenRemoveModal(row)}
-            >
+            <button className="sa-btn-outline" onClick={() => handleOpenRemoveModal(row)}>
               Remove
             </button>
           </>
@@ -114,10 +99,7 @@ export default function ManageAdmins() {
       />
 
       {showAddModal && (
-        <AddAdminModal
-          onClose={handleCloseAddModal}
-          onAssigned={handleAdminAdded}
-        />
+        <AddAdminModal onClose={handleCloseAddModal} onAssigned={handleAdminAdded} />
       )}
 
       {removeTarget && (

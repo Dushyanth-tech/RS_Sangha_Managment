@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../../api/axiosInstance"; // ⚠️ adjust to match this file's actual depth from src/
 import DataTable from "../../../../Common_Component/DataTable";
 import CreateSanghaModal from "../components/CreateSanghaModal";
 import EditSanghaModal from "../../SuperAdmin/Modal/EditSanghaModal";
 import "./ManageSanghas.css";
-
-const API_BASE = "http://localhost:8000";
 
 export default function ManageSanghas() {
   const [sanghas, setSanghas] = useState([]);
@@ -21,14 +19,10 @@ export default function ManageSanghas() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const token = () => localStorage.getItem("access_token");
-
   const fetchSanghas = async () => {
     try {
       setFetching(true);
-      const res = await axios.get(`${API_BASE}/sanghas`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      const res = await api.get(`/sanghas`);
       setSanghas(res.data);
     } catch (error) {
       console.error("Error fetching sanghas:", error);
@@ -51,7 +45,7 @@ export default function ManageSanghas() {
   const handleCloseEditModal = () => setEditTarget(null);
 
   const handleChanged = () => {
-    fetchSanghas(); // single source of truth — same fix as ManageAdmins
+    fetchSanghas();
   };
 
   const filteredSanghas = sanghas.filter((s) =>
@@ -71,19 +65,8 @@ export default function ManageSanghas() {
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <circle
-                cx="9"
-                cy="9"
-                r="6.5"
-                stroke="currentColor"
-                strokeWidth="1.6"
-              />
-              <path
-                d="M14 14L18 18"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              />
+              <circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M14 14L18 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
             <input
               className="sa-input sa-search__input"
@@ -93,10 +76,7 @@ export default function ManageSanghas() {
             />
           </div>
 
-          <button
-            className="sa-btn-primary"
-            onClick={() => setShowCreateModal(true)}
-          >
+          <button className="sa-btn-primary" onClick={() => setShowCreateModal(true)}>
             + Create Sangha
           </button>
         </div>
@@ -106,30 +86,15 @@ export default function ManageSanghas() {
           columns={[
             { key: "name", label: "Sangha Name" },
             { key: "code", label: "Code" },
-            {
-              key: "admin",
-              label: "Admin",
-              render: (row) => row.admin_name || "-",
-            },
-            {
-              key: "members",
-              label: "Members",
-              render: (row) => row.membersCount ?? 0,
-            },
+            { key: "admin", label: "Admin", render: (row) => row.admin_name || "-" },
+            { key: "members", label: "Members", render: (row) => row.membersCount ?? 0 },
           ]}
           rows={filteredSanghas}
           emptyText={
-            fetching
-              ? "Loading..."
-              : search
-                ? "No sanghas match your search"
-                : "No records found"
+            fetching ? "Loading..." : search ? "No sanghas match your search" : "No records found"
           }
           actions={(row) => (
-            <button
-              className="sa-btn-outline"
-              onClick={() => handleOpenEditModal(row)}
-            >
+            <button className="sa-btn-outline" onClick={() => handleOpenEditModal(row)}>
               Edit
             </button>
           )}
@@ -137,18 +102,11 @@ export default function ManageSanghas() {
       </div>
 
       {showCreateModal && (
-        <CreateSanghaModal
-          onClose={() => setShowCreateModal(false)}
-          onCreated={handleCreated}
-        />
+        <CreateSanghaModal onClose={() => setShowCreateModal(false)} onCreated={handleCreated} />
       )}
 
       {editTarget && (
-        <EditSanghaModal
-          sangha={editTarget}
-          onClose={handleCloseEditModal}
-          onChanged={handleChanged}
-        />
+        <EditSanghaModal sangha={editTarget} onClose={handleCloseEditModal} onChanged={handleChanged} />
       )}
 
       {toast && <div className="sa-toast">{toast}</div>}

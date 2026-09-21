@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
+import api from "../../../../../api/axiosInstance"; // ⚠️ verify this matches this file's actual depth
 import "./RemoveAdminModal.css";
-
-const API_BASE = "http://localhost:8000";
 
 export default function RemoveAdminModal({ admin, onClose, onRemoved }) {
   const [sanghas, setSanghas] = useState([]);
@@ -14,14 +12,10 @@ export default function RemoveAdminModal({ admin, onClose, onRemoved }) {
   const [error, setError] = useState(null);
   const wrapperRef = useRef(null);
 
-  const token = () => localStorage.getItem("access_token");
-
   const fetchManagedSanghas = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/admins/${admin.id}/sanghas`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      const res = await api.get(`/admins/${admin.id}/sanghas`);
       setSanghas(res.data);
     } catch (error) {
       console.error("Error fetching managed sanghas:", error);
@@ -35,7 +29,6 @@ export default function RemoveAdminModal({ admin, onClose, onRemoved }) {
     fetchManagedSanghas();
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
@@ -67,8 +60,7 @@ export default function RemoveAdminModal({ admin, onClose, onRemoved }) {
 
     try {
       setSubmitting(true);
-      await axios.delete(`${API_BASE}/admins/${admin.id}/sanghas`, {
-        headers: { Authorization: `Bearer ${token()}` },
+      await api.delete(`/admins/${admin.id}/sanghas`, {
         data: { sangha_ids: selected.map((s) => s.id) },
       });
       onRemoved(admin.id, selected.map((s) => s.id));

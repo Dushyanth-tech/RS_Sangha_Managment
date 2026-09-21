@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
-
-const API_BASE = "http://localhost:8000";
+import api from "../../../../api/axiosInstance"; // ⚠️ verify depth
 
 export default function RemoveMembersModal({ sangha, onClose, onMemberRemoved }) {
   const [query, setQuery] = useState("");
@@ -11,16 +9,12 @@ export default function RemoveMembersModal({ sangha, onClose, onMemberRemoved })
   const [removedIds, setRemovedIds] = useState(new Set());
   const debounceRef = useRef(null);
 
-  const token = () => localStorage.getItem("access_token");
-
   const fetchMembers = async (q) => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/sanghas/${sangha.id}/members`, {
+      const res = await api.get(`/sanghas/${sangha.id}/members`, {
         params: { q },
-        headers: { Authorization: `Bearer ${token()}` },
       });
-      console.log("Fetched members:", res.data); // Debugging log
       setMembers(res.data);
     } catch (error) {
       console.error("Error fetching sangha members:", error);
@@ -29,12 +23,10 @@ export default function RemoveMembersModal({ sangha, onClose, onMemberRemoved })
     }
   };
 
-  // Load all members immediately on open
   useEffect(() => {
     fetchMembers("");
   }, []);
 
-  // Debounced search on typing
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -46,10 +38,7 @@ export default function RemoveMembersModal({ sangha, onClose, onMemberRemoved })
   const handleRemove = async (member) => {
     try {
       setRemovingId(member.id);
-      const res = await axios.delete(
-        `${API_BASE}/sanghas/${sangha.id}/members/${member.id}`,
-        { headers: { Authorization: `Bearer ${token()}` } }
-      );
+      const res = await api.delete(`/sanghas/${sangha.id}/members/${member.id}`);
       setRemovedIds((prev) => new Set(prev).add(member.id));
       onMemberRemoved(sangha.id, res.data.membersCount);
     } catch (error) {

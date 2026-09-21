@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../../api/axiosInstance"; // ⚠️ verify this matches this file's actual depth
 import DataTable from "../../../../Common_Component/DataTable";
-
-const API_BASE = "http://localhost:8000";
 
 const badgeClass = {
   pending: "sa-badge--pending",
@@ -16,15 +14,11 @@ export default function SubadminRequests() {
   const [actingId, setActingId] = useState(null);
   const [error, setError] = useState("");
 
-  const token = () => localStorage.getItem("access_token");
-
   const fetchRequests = async () => {
     try {
       setFetching(true);
       setError("");
-      const res = await axios.get(`${API_BASE}/admin-requests`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      const res = await api.get(`/admin-requests`);
       setRequests(res.data);
     } catch (err) {
       console.error("Error fetching admin requests:", err);
@@ -43,11 +37,7 @@ export default function SubadminRequests() {
 
     try {
       setActingId(row.id);
-      await axios.patch(
-        `${API_BASE}/admin-requests/${row.id}/approve`,
-        {},
-        { headers: { Authorization: `Bearer ${token()}` } }
-      );
+      await api.patch(`/admin-requests/${row.id}/approve`, {});
       setRequests((prev) =>
         prev.map((r) => (r.id === row.id ? { ...r, status: "APPROVED" } : r))
       );
@@ -61,15 +51,11 @@ export default function SubadminRequests() {
 
   const handleReject = async (row) => {
     const reason = window.prompt("Reason for rejecting this request (optional):", "");
-    if (reason === null) return; // cancelled
+    if (reason === null) return;
 
     try {
       setActingId(row.id);
-      await axios.patch(
-        `${API_BASE}/admin-requests/${row.id}/reject`,
-        { reason },
-        { headers: { Authorization: `Bearer ${token()}` } }
-      );
+      await api.patch(`/admin-requests/${row.id}/reject`, { reason });
       setRequests((prev) =>
         prev.map((r) =>
           r.id === row.id ? { ...r, status: "REJECTED", rejection_reason: reason } : r
@@ -87,9 +73,7 @@ export default function SubadminRequests() {
     <div className="sa-page">
       <h2 className="sa-section__title">Admin Requests</h2>
 
-      {error && (
-        <p style={{ color: "var(--pink-700)", marginBottom: "1rem" }}>{error}</p>
-      )}
+      {error && <p style={{ color: "var(--pink-700)", marginBottom: "1rem" }}>{error}</p>}
 
       <DataTable
         columns={[
@@ -101,11 +85,7 @@ export default function SubadminRequests() {
             label: "Status",
             render: (row) => {
               const status = (row.status || "").toLowerCase();
-              return (
-                <span className={`sa-badge ${badgeClass[status] || ""}`}>
-                  {status}
-                </span>
-              );
+              return <span className={`sa-badge ${badgeClass[status] || ""}`}>{status}</span>;
             },
           },
         ]}

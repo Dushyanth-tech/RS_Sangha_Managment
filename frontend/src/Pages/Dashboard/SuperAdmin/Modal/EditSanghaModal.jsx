@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
-
-const API_BASE = "http://localhost:8000";
+import api from "../../../../api/axiosInstance"; // ⚠️ verify this matches this file's actual depth
 
 export default function EditSanghaModal({ sangha, onClose, onChanged }) {
-  const [tab, setTab] = useState("details"); // "details" | "add" | "remove"
-  const token = () => localStorage.getItem("access_token");
+  const [tab, setTab] = useState("details");
 
   // ---------- Details tab ----------
   const [name, setName] = useState(sangha.name || "");
@@ -23,16 +20,14 @@ export default function EditSanghaModal({ sangha, onClose, onChanged }) {
     if (state.trim() && state.trim() !== (sangha.state || "")) payload.state = state.trim();
 
     if (Object.keys(payload).length === 0) {
-      onClose(); // nothing changed, just close
+      onClose();
       return;
     }
 
     try {
       setSavingDetails(true);
       setDetailsError("");
-      await axios.patch(`${API_BASE}/sanghas/${sangha.id}`, payload, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      await api.patch(`/sanghas/${sangha.id}`, payload);
       onChanged();
       onClose();
     } catch (err) {
@@ -53,9 +48,8 @@ export default function EditSanghaModal({ sangha, onClose, onChanged }) {
   const fetchAddResults = async (q) => {
     try {
       setAddLoading(true);
-      const res = await axios.get(`${API_BASE}/users/search`, {
+      const res = await api.get(`/users/search`, {
         params: { q, role: "member" },
-        headers: { Authorization: `Bearer ${token()}` },
       });
       setAddResults(res.data);
     } catch (err) {
@@ -80,11 +74,7 @@ export default function EditSanghaModal({ sangha, onClose, onChanged }) {
   const handleAddMember = async (member) => {
     try {
       setAddingId(member.id);
-      await axios.post(
-        `${API_BASE}/sanghas/${sangha.id}/members`,
-        { member_id: member.id },
-        { headers: { Authorization: `Bearer ${token()}` } }
-      );
+      await api.post(`/sanghas/${sangha.id}/members`, { member_id: member.id });
       onChanged();
       fetchAddResults(addQuery);
     } catch (err) {
@@ -95,21 +85,19 @@ export default function EditSanghaModal({ sangha, onClose, onChanged }) {
   };
 
   const handleDelete = async () => {
-  try {
-    setDeleting(true);
-    await axios.delete(`${API_BASE}/sanghas/${sangha.id}`, {
-      headers: { Authorization: `Bearer ${token()}` },
-    });
-    onChanged();
-    onClose();
-  } catch (err) {
-    console.error("Error deleting sangha:", err);
-    setDetailsError(err.response?.data?.detail || "Failed to delete sangha.");
-    setConfirmDelete(false);
-  } finally {
-    setDeleting(false);
-  }
-};
+    try {
+      setDeleting(true);
+      await api.delete(`/sanghas/${sangha.id}`);
+      onChanged();
+      onClose();
+    } catch (err) {
+      console.error("Error deleting sangha:", err);
+      setDetailsError(err.response?.data?.detail || "Failed to delete sangha.");
+      setConfirmDelete(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // ---------- Remove members tab ----------
   const [removeQuery, setRemoveQuery] = useState("");
@@ -124,9 +112,8 @@ export default function EditSanghaModal({ sangha, onClose, onChanged }) {
   const fetchCurrentMembers = async (q) => {
     try {
       setRemoveLoading(true);
-      const res = await axios.get(`${API_BASE}/sanghas/${sangha.id}/members`, {
+      const res = await api.get(`/sanghas/${sangha.id}/members`, {
         params: { q },
-        headers: { Authorization: `Bearer ${token()}` },
       });
       setCurrentMembers(res.data);
     } catch (err) {
@@ -141,13 +128,10 @@ export default function EditSanghaModal({ sangha, onClose, onChanged }) {
     fetchCurrentMembers("");
   }, [tab]);
 
-
   const handleRemoveMember = async (member) => {
     try {
       setRemovingId(member.id);
-      await axios.delete(`${API_BASE}/sanghas/${sangha.id}/members/${member.id}`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      await api.delete(`/sanghas/${sangha.id}/members/${member.id}`);
       setRemovedIds((prev) => new Set(prev).add(member.id));
       onChanged();
     } catch (err) {
@@ -304,37 +288,37 @@ export default function EditSanghaModal({ sangha, onClose, onChanged }) {
         </div>
 
         {tab === "details" && (
-  <div className="sa-modal__footer sa-modal__footer--split">
-    {!confirmDelete ? (
-      <button
-        className="sa-btn-danger"
-        onClick={() => setConfirmDelete(true)}
-        disabled={savingDetails}
-      >
-        Remove Sangha Permanently
-      </button>
-    ) : (
-      <div className="sa-confirm-inline">
-        <span>Delete “{sangha.name}” and detach all its members?</span>
-        <button className="sa-btn-outline" onClick={() => setConfirmDelete(false)} disabled={deleting}>
-          Cancel
-        </button>
-        <button className="sa-btn-danger" onClick={handleDelete} disabled={deleting}>
-          {deleting ? "Deleting..." : "Yes, delete"}
-        </button>
-      </div>
-    )}
+          <div className="sa-modal__footer sa-modal__footer--split">
+            {!confirmDelete ? (
+              <button
+                className="sa-btn-danger"
+                onClick={() => setConfirmDelete(true)}
+                disabled={savingDetails}
+              >
+                Remove Sangha Permanently
+              </button>
+            ) : (
+              <div className="sa-confirm-inline">
+                <span>Delete "{sangha.name}" and detach all its members?</span>
+                <button className="sa-btn-outline" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                  Cancel
+                </button>
+                <button className="sa-btn-danger" onClick={handleDelete} disabled={deleting}>
+                  {deleting ? "Deleting..." : "Yes, delete"}
+                </button>
+              </div>
+            )}
 
-    <div className="sa-modal__footer-right">
-      <button className="sa-btn-outline" onClick={onClose} disabled={savingDetails || deleting}>
-        Cancel
-      </button>
-      <button className="sa-btn-primary" onClick={handleSaveDetails} disabled={savingDetails || deleting}>
-        {savingDetails ? "Saving..." : "Save Changes"}
-      </button>
-    </div>
-  </div>
-)}
+            <div className="sa-modal__footer-right">
+              <button className="sa-btn-outline" onClick={onClose} disabled={savingDetails || deleting}>
+                Cancel
+              </button>
+              <button className="sa-btn-primary" onClick={handleSaveDetails} disabled={savingDetails || deleting}>
+                {savingDetails ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

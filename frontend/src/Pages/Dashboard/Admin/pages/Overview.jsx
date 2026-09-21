@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../../api/axiosInstance"
 import {
   Users,
   Building2,
@@ -7,18 +7,16 @@ import {
 } from "lucide-react";
 import StatsCard from "../../../../Common_Component/StatsCard";
 
-const API_BASE = "http://localhost:8000";
 
 export default function Overview() {
   const [sanghas, setSanghas] = useState([]);
   const [requests, setRequests] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
-  const token = () => localStorage.getItem("access_token");
 
-  useEffect(() => {
-  const headers = { Authorization: `Bearer ${token()}` };
-  axios.get(`${API_BASE}/sanghas`, { headers }).then((res) => setSanghas(res.data)).catch(() => {});
-  axios.get(`${API_BASE}/admin-requests/pending-count`, { headers })
+
+useEffect(() => {
+  api.get(`/sanghas`).then((res) => setSanghas(res.data)).catch(() => {});
+  api.get(`/admin-requests/pending-count`)
     .then((res) => setPendingCount(res.data.pending_count))
     .catch(() => {});
 }, []);
@@ -29,9 +27,9 @@ export default function Overview() {
   return (
     <div className="sa-page">
       <div className="sa-stats-grid">
-        <StatsCard label="Sanghas Managed" value={sanghas.length} icon={Building2} />
-        <StatsCard label="Total Members" value={totalMembers} icon={Users} />
-        <StatsCard label="Pending Admin Requests" value={pendingCount} icon={Mail} />
+        <StatsCard label="Sanghas Managed" value={sanghas.length} icon={<Building2 size={20}/>} />
+        <StatsCard label="Total Members" value={totalMembers} icon={<Users size={20}/>} />
+        <StatsCard label="Pending Admin Requests" value={pendingCount} icon={<Mail size={20}/>} />
       </div>
     </div>
   );

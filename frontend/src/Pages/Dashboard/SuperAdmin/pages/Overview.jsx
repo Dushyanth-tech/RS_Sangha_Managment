@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../../api/axiosInstance"
 import {
   Users,
   Building2,
@@ -11,7 +11,6 @@ import {
 import StatsCard from "../../../../Common_Component/StatsCard";
 import DataTable from "../../../../Common_Component/DataTable";
 
-const API_BASE = "http://localhost:8000";
 
 const recentActivity = [
   {
@@ -49,14 +48,10 @@ export default function Overview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const token = () => localStorage.getItem("access_token");
-
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/overview`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      const res = await api.get("/overview")
       setStats(res.data);
       setError(null);
     } catch (error) {

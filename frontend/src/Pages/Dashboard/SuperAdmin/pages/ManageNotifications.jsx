@@ -1,14 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../../../../api/axiosInstance"; // ⚠️ verify this matches this file's actual depth
 import "./ManageNotifications.css";
-
-const API_BASE = "http://localhost:8000";
 
 const emptyForm = {
   title: "",
   type: "Account Verification",
   recipient: "All Members",
-  sanghaMode: "all", // "all" | "specific"
+  sanghaMode: "all",
   selectedSanghaIds: [],
   message: "",
   includePath: true,
@@ -45,21 +43,15 @@ export default function ManageNotifications() {
   const [selectedNotifications, setSelectedNotifications] = useState([]);
   const [clearing, setClearing] = useState(false);
 
-  const token = () => localStorage.getItem("access_token");
-
   const fetchNotifications = async () => {
     try {
       setFetching(true);
       setFetchError("");
-      const res = await axios.get(`${API_BASE}/notifications`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      const res = await api.get(`/notifications`);
       setNotifications(res.data);
     } catch (error) {
       console.error("Error fetching notifications:", error);
-      setFetchError(
-        error.response?.data?.detail || "Failed to load notifications.",
-      );
+      setFetchError(error.response?.data?.detail || "Failed to load notifications.");
     } finally {
       setFetching(false);
     }
@@ -68,9 +60,7 @@ export default function ManageNotifications() {
   const fetchSanghas = async () => {
     try {
       setSanghasLoading(true);
-      const res = await axios.get(`${API_BASE}/sanghas`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      const res = await api.get(`/sanghas`);
       setSanghas(res.data);
     } catch (error) {
       console.error("Error fetching sanghas:", error);
@@ -90,23 +80,16 @@ export default function ManageNotifications() {
         notification.title.toLowerCase().includes(search.toLowerCase()) ||
         notification.message.toLowerCase().includes(search.toLowerCase());
 
-      const matchesStatus =
-        statusFilter === "All" || notification.status === statusFilter;
-
-      const matchesType =
-        typeFilter === "All" || notification.type === typeFilter;
+      const matchesStatus = statusFilter === "All" || notification.status === statusFilter;
+      const matchesType = typeFilter === "All" || notification.type === typeFilter;
 
       return matchesSearch && matchesStatus && matchesType;
     });
   }, [notifications, search, statusFilter, typeFilter]);
 
   const totalNotifications = notifications.length;
-  const sentCount = notifications.filter(
-    (item) => item.status === "Sent",
-  ).length;
-  const draftCount = notifications.filter(
-    (item) => item.status === "Draft",
-  ).length;
+  const sentCount = notifications.filter((item) => item.status === "Sent").length;
+  const draftCount = notifications.filter((item) => item.status === "Draft").length;
 
   const updateForm = (field, value) => {
     setForm((previous) => ({ ...previous, [field]: value }));
@@ -138,9 +121,7 @@ export default function ManageNotifications() {
     }
 
     if (form.sanghaMode === "specific" && form.selectedSanghaIds.length === 0) {
-      setFormError(
-        'Please select at least one Sangha, or choose "All Sanghas".',
-      );
+      setFormError('Please select at least one Sangha, or choose "All Sanghas".');
       return;
     }
 
@@ -148,29 +129,22 @@ export default function ManageNotifications() {
       setSubmitting(true);
       setFormError("");
 
-      const res = await axios.post(
-        `${API_BASE}/notifications`,
-        {
-          title: form.title.trim(),
-          type: form.type,
-          recipient: form.recipient,
-          sangha_ids:
-            form.sanghaMode === "specific" ? form.selectedSanghaIds : null,
-          message: form.message.trim(),
-          include_path: form.includePath,
-          navigation_path: form.includePath ? verificationPath : null,
-          send_now: sendNow,
-        },
-        { headers: { Authorization: `Bearer ${token()}` } },
-      );
+      const res = await api.post(`/notifications`, {
+        title: form.title.trim(),
+        type: form.type,
+        recipient: form.recipient,
+        sangha_ids: form.sanghaMode === "specific" ? form.selectedSanghaIds : null,
+        message: form.message.trim(),
+        include_path: form.includePath,
+        navigation_path: form.includePath ? verificationPath : null,
+        send_now: sendNow,
+      });
 
       setNotifications((previous) => [res.data, ...previous]);
       closeModal();
     } catch (error) {
       console.error("Error saving notification:", error);
-      setFormError(
-        error.response?.data?.detail || "Failed to save notification.",
-      );
+      setFormError(error.response?.data?.detail || "Failed to save notification.");
     } finally {
       setSubmitting(false);
     }
@@ -185,22 +159,13 @@ export default function ManageNotifications() {
   };
 
   const selectAllNotifications = () => {
-    const filteredIds = filteredNotifications.map(
-      (notification) => notification.id,
-    );
-
-    const allSelected = filteredIds.every((id) =>
-      selectedNotifications.includes(id),
-    );
+    const filteredIds = filteredNotifications.map((notification) => notification.id);
+    const allSelected = filteredIds.every((id) => selectedNotifications.includes(id));
 
     if (allSelected) {
-      setSelectedNotifications((previous) =>
-        previous.filter((id) => !filteredIds.includes(id)),
-      );
+      setSelectedNotifications((previous) => previous.filter((id) => !filteredIds.includes(id)));
     } else {
-      setSelectedNotifications((previous) => [
-        ...new Set([...previous, ...filteredIds]),
-      ]);
+      setSelectedNotifications((previous) => [...new Set([...previous, ...filteredIds])]);
     }
   };
 
@@ -219,29 +184,17 @@ export default function ManageNotifications() {
     try {
       setClearing(true);
 
-      await axios.post(
-        `${API_BASE}/notifications/clear-selected`,
-        {
-          notification_ids: selectedNotifications.map(Number),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      await api.post(`/notifications/clear-selected`, {
+        notification_ids: selectedNotifications.map(Number),
+      });
 
       setNotifications((previous) =>
-        previous.filter(
-          (notification) => !selectedNotifications.includes(notification.id),
-        ),
+        previous.filter((notification) => !selectedNotifications.includes(notification.id)),
       );
 
       setSelectedNotifications([]);
     } catch (error) {
       console.error("Error clearing notifications:", error);
-
       alert(error.response?.data?.detail || "Failed to clear notifications.");
     } finally {
       setClearing(false);
@@ -250,24 +203,16 @@ export default function ManageNotifications() {
 
   return (
     <div className="mn-page">
-      {/* ================= PAGE HEADER ================= */}
-
       <div className="mn-page-header">
         <div>
           <p className="mn-eyebrow">SUPERADMIN</p>
-
           <h1 className="mn-title">Manage Notifications</h1>
-
           <p className="mn-subtitle">
-            Send important announcements and account-related instructions to
-            members.
+            Send important announcements and account-related instructions to members.
           </p>
         </div>
 
-        <button
-          className="sa-btn-primary mn-send-btn"
-          onClick={() => setShowModal(true)}
-        >
+        <button className="sa-btn-primary mn-send-btn" onClick={() => setShowModal(true)}>
           <span>＋</span>
           Send Notification
         </button>
@@ -282,47 +227,31 @@ export default function ManageNotifications() {
         </div>
       )}
 
-      {/* ================= STATS ================= */}
-
       <div className="sa-stats-grid mn-stats">
         <div className="sa-stat-card">
           <div className="sa-stat-card__icon">🔔</div>
-
           <div className="sa-stat-card__body">
             <span className="sa-stat-card__label">Total Notifications</span>
-
-            <span className="sa-stat-card__value">
-              {fetching ? "..." : totalNotifications}
-            </span>
+            <span className="sa-stat-card__value">{fetching ? "..." : totalNotifications}</span>
           </div>
         </div>
 
         <div className="sa-stat-card">
           <div className="sa-stat-card__icon">✓</div>
-
           <div className="sa-stat-card__body">
             <span className="sa-stat-card__label">Sent</span>
-
-            <span className="sa-stat-card__value">
-              {fetching ? "..." : sentCount}
-            </span>
+            <span className="sa-stat-card__value">{fetching ? "..." : sentCount}</span>
           </div>
         </div>
 
         <div className="sa-stat-card">
           <div className="sa-stat-card__icon">◷</div>
-
           <div className="sa-stat-card__body">
             <span className="sa-stat-card__label">Drafts</span>
-
-            <span className="sa-stat-card__value">
-              {fetching ? "..." : draftCount}
-            </span>
+            <span className="sa-stat-card__value">{fetching ? "..." : draftCount}</span>
           </div>
         </div>
       </div>
-
-      {/* ================= IMPORTANT NOTICE ================= */}
 
       <section className="mn-featured">
         <div className="mn-featured-icon">✓</div>
@@ -330,38 +259,27 @@ export default function ManageNotifications() {
         <div className="mn-featured-content">
           <div className="mn-featured-top">
             <div>
-              <span className="mn-featured-label">
-                RECOMMENDED MEMBER NOTIFICATION
-              </span>
-
+              <span className="mn-featured-label">RECOMMENDED MEMBER NOTIFICATION</span>
               <h2>Please verify your account</h2>
             </div>
-
-            <span className="sa-badge sa-badge--pending">
-              Account Verification
-            </span>
+            <span className="sa-badge sa-badge--pending">Account Verification</span>
           </div>
 
           <p>
-            Please complete your personal and banking details to verify your
-            account and keep your RS-Sangha profile up to date.
+            Please complete your personal and banking details to verify your account and keep
+            your RS-Sangha profile up to date.
           </p>
 
           <div className="mn-path">
             <span className="mn-path-label">Member navigation path</span>
-
             <div className="mn-path-steps">
               {verificationPath.map((step, index) => (
                 <React.Fragment key={step}>
                   <div className="mn-path-step">
                     <span className="mn-path-number">{index + 1}</span>
-
                     <span>{step}</span>
                   </div>
-
-                  {index < verificationPath.length - 1 && (
-                    <span className="mn-path-arrow">→</span>
-                  )}
+                  {index < verificationPath.length - 1 && <span className="mn-path-arrow">→</span>}
                 </React.Fragment>
               ))}
             </div>
@@ -374,50 +292,39 @@ export default function ManageNotifications() {
                 setForm({
                   title: "Please verify your account",
                   type: "Account Verification",
-                  recipient:
-                    "Members Without Completed Profile or Banking Details",
+                  recipient: "Members Without Completed Profile or Banking Details",
                   sanghaMode: "all",
                   selectedSanghaIds: [],
                   message:
                     "Please complete your personal and banking details to verify your account and keep your RS-Sangha profile up to date.",
                   includePath: true,
                 });
-
                 setShowModal(true);
               }}
             >
               Send to Members
             </button>
 
-            <button
-              className="sa-btn-outline"
-              onClick={() => setShowPreview(true)}
-            >
+            <button className="sa-btn-outline" onClick={() => setShowPreview(true)}>
               Preview
             </button>
           </div>
         </div>
       </section>
 
-      {/* ================= NOTIFICATION LIST ================= */}
-
       <section className="sa-section">
         <div className="sa-section__header">
           <div>
             <h2 className="sa-section__title">Notification History</h2>
-
             <p className="mn-section-description">
               View and manage notifications created by the SuperAdmin.
             </p>
           </div>
         </div>
 
-        {/* Filters */}
-
         <div className="mn-filter-bar">
           <div className="mn-search-wrapper">
             <span>⌕</span>
-
             <input
               type="text"
               placeholder="Search notifications..."
@@ -426,19 +333,13 @@ export default function ManageNotifications() {
             />
           </div>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="All">All Status</option>
             <option value="Sent">Sent</option>
             <option value="Draft">Draft</option>
           </select>
 
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-          >
+          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
             <option value="All">All Types</option>
             <option value="Account Verification">Account Verification</option>
             <option value="Profile">Profile</option>
@@ -451,13 +352,9 @@ export default function ManageNotifications() {
             onClick={clearSelectedNotifications}
             disabled={selectedNotifications.length === 0 || clearing}
           >
-            {clearing
-              ? "Clearing..."
-              : `Clear Selected (${selectedNotifications.length})`}
+            {clearing ? "Clearing..." : `Clear Selected (${selectedNotifications.length})`}
           </button>
         </div>
-
-        {/* Table */}
 
         <div className="sa-table-wrapper mn-table-wrapper">
           <table className="sa-table">
@@ -475,11 +372,9 @@ export default function ManageNotifications() {
                       }
                       onChange={selectAllNotifications}
                     />
-
                     <span>All</span>
                   </div>
                 </th>
-
                 <th>Notification</th>
                 <th>Type</th>
                 <th>Sangha</th>
@@ -508,37 +403,25 @@ export default function ManageNotifications() {
                     <td>
                       <input
                         type="checkbox"
-                        checked={selectedNotifications.includes(
-                          notification.id,
-                        )}
-                        onChange={() =>
-                          toggleNotificationSelection(notification.id)
-                        }
+                        checked={selectedNotifications.includes(notification.id)}
+                        onChange={() => toggleNotificationSelection(notification.id)}
                       />
                     </td>
-
                     <td>
                       <span className="mn-type">{notification.type}</span>
                     </td>
-
                     <td>{notification.sanghaLabel || "All Sanghas"}</td>
-
                     <td>{notification.recipient}</td>
-
                     <td>
                       <span
                         className={`sa-badge ${
-                          notification.status === "Sent"
-                            ? "sa-badge--approved"
-                            : "sa-badge--pending"
+                          notification.status === "Sent" ? "sa-badge--approved" : "sa-badge--pending"
                         }`}
                       >
                         {notification.status}
                       </span>
                     </td>
-
                     <td>{notification.sentAt}</td>
-
                     <td>
                       <button
                         className="mn-view-btn"
@@ -547,14 +430,11 @@ export default function ManageNotifications() {
                             title: notification.title,
                             type: notification.type,
                             recipient: notification.recipient,
-                            sanghaMode: notification.sanghaIds?.length
-                              ? "specific"
-                              : "all",
+                            sanghaMode: notification.sanghaIds?.length ? "specific" : "all",
                             selectedSanghaIds: notification.sanghaIds || [],
                             message: notification.message,
                             includePath: notification.path.length > 0,
                           });
-
                           setShowPreview(true);
                         }}
                       >
@@ -569,8 +449,6 @@ export default function ManageNotifications() {
         </div>
       </section>
 
-      {/* ================= SEND MODAL ================= */}
-
       {showModal && (
         <div
           className="mn-modal-overlay"
@@ -584,17 +462,11 @@ export default function ManageNotifications() {
             <div className="mn-modal-header">
               <div>
                 <span className="mn-eyebrow">CREATE NOTIFICATION</span>
-
                 <h2>Send Notification</h2>
-
                 <p>Create an announcement for your members.</p>
               </div>
 
-              <button
-                className="mn-close"
-                onClick={closeModal}
-                disabled={submitting}
-              >
+              <button className="mn-close" onClick={closeModal} disabled={submitting}>
                 ×
               </button>
             </div>
@@ -608,7 +480,6 @@ export default function ManageNotifications() {
 
               <div className="mn-form-group">
                 <label>Notification Title</label>
-
                 <input
                   type="text"
                   placeholder="Enter notification title"
@@ -621,7 +492,6 @@ export default function ManageNotifications() {
               <div className="mn-form-row">
                 <div className="mn-form-group">
                   <label>Notification Type</label>
-
                   <select
                     value={form.type}
                     onChange={(e) => updateForm("type", e.target.value)}
@@ -636,7 +506,6 @@ export default function ManageNotifications() {
 
                 <div className="mn-form-group">
                   <label>Send To</label>
-
                   <select
                     value={form.recipient}
                     onChange={(e) => updateForm("recipient", e.target.value)}
@@ -645,9 +514,7 @@ export default function ManageNotifications() {
                     <option>All Members</option>
                     <option>Members Without Completed Profile</option>
                     <option>Members Without Banking Details</option>
-                    <option>
-                      Members Without Completed Profile or Banking Details
-                    </option>
+                    <option>Members Without Completed Profile or Banking Details</option>
                   </select>
                 </div>
               </div>
@@ -682,19 +549,12 @@ export default function ManageNotifications() {
                 {form.sanghaMode === "specific" && (
                   <div className="mn-sangha-list">
                     {sanghasLoading ? (
-                      <div className="mn-sangha-list__empty">
-                        Loading sanghas...
-                      </div>
+                      <div className="mn-sangha-list__empty">Loading sanghas...</div>
                     ) : sanghas.length === 0 ? (
-                      <div className="mn-sangha-list__empty">
-                        No sanghas found.
-                      </div>
+                      <div className="mn-sangha-list__empty">No sanghas found.</div>
                     ) : (
                       sanghas.map((sangha) => (
-                        <label
-                          key={sangha.id}
-                          className="mn-checkbox mn-sangha-item"
-                        >
+                        <label key={sangha.id} className="mn-checkbox mn-sangha-item">
                           <input
                             type="checkbox"
                             checked={form.selectedSanghaIds.includes(sangha.id)}
@@ -711,7 +571,6 @@ export default function ManageNotifications() {
 
               <div className="mn-form-group">
                 <label>Message</label>
-
                 <textarea
                   rows="5"
                   placeholder="Write your notification..."
@@ -728,21 +587,16 @@ export default function ManageNotifications() {
                   onChange={(e) => updateForm("includePath", e.target.checked)}
                   disabled={submitting}
                 />
-
                 <span>Include member navigation instructions</span>
               </label>
 
               {form.includePath && (
                 <div className="mn-form-path">
-                  <div className="mn-form-path-title">
-                    Member navigation path
-                  </div>
-
+                  <div className="mn-form-path-title">Member navigation path</div>
                   <div className="mn-form-path-list">
                     {verificationPath.map((step, index) => (
                       <div className="mn-form-path-item" key={step}>
                         <span>{index + 1}</span>
-
                         {step}
                       </div>
                     ))}
@@ -752,11 +606,7 @@ export default function ManageNotifications() {
             </div>
 
             <div className="mn-modal-footer">
-              <button
-                className="sa-btn-outline"
-                onClick={closeModal}
-                disabled={submitting}
-              >
+              <button className="sa-btn-outline" onClick={closeModal} disabled={submitting}>
                 Cancel
               </button>
 
@@ -780,8 +630,6 @@ export default function ManageNotifications() {
         </div>
       )}
 
-      {/* ================= PREVIEW MODAL ================= */}
-
       {showPreview && (
         <div
           className="mn-modal-overlay"
@@ -795,14 +643,10 @@ export default function ManageNotifications() {
             <div className="mn-preview-header">
               <div>
                 <span className="mn-eyebrow">MEMBER PREVIEW</span>
-
                 <h2>Notification Preview</h2>
               </div>
 
-              <button
-                className="mn-close"
-                onClick={() => setShowPreview(false)}
-              >
+              <button className="mn-close" onClick={() => setShowPreview(false)}>
                 ×
               </button>
             </div>
@@ -835,10 +679,8 @@ export default function ManageNotifications() {
                     <React.Fragment key={step}>
                       <div className="mn-preview-path-step">
                         <span>{index + 1}</span>
-
                         <strong>{step}</strong>
                       </div>
-
                       {index < verificationPath.length - 1 && (
                         <div className="mn-preview-arrow">↓</div>
                       )}

@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
-
-const API_BASE = "http://localhost:8000";
+import api from "../../../../api/axiosInstance"; // ⚠️ verify this matches your actual folder depth
 
 export default function AddMembersModal({ sangha, onClose, onMemberAdded }) {
   const [query, setQuery] = useState("");
@@ -10,14 +8,11 @@ export default function AddMembersModal({ sangha, onClose, onMemberAdded }) {
   const [addingId, setAddingId] = useState(null);
   const debounceRef = useRef(null);
 
-  const token = () => localStorage.getItem("access_token");
-
   const fetchMembers = async (q) => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/users/search`, {
+      const res = await api.get(`/users/search`, {
         params: { q, role: "member" },
-        headers: { Authorization: `Bearer ${token()}` },
       });
       setResults(res.data);
     } catch (error) {
@@ -44,11 +39,9 @@ export default function AddMembersModal({ sangha, onClose, onMemberAdded }) {
   const handleAdd = async (member) => {
     try {
       setAddingId(member.id);
-      const res = await axios.post(
-        `${API_BASE}/sanghas/${sangha.id}/members`,
-        { member_id: member.id },
-        { headers: { Authorization: `Bearer ${token()}` } },
-      );
+      const res = await api.post(`/sanghas/${sangha.id}/members`, {
+        member_id: member.id,
+      });
       onMemberAdded(sangha.id, res.data.membersCount);
       fetchMembers(query); // refresh so the row flips from Add to Member/Added state
     } catch (error) {

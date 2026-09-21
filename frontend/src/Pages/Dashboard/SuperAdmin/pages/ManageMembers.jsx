@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../../../../api/axiosInstance"; // ⚠️ verify this matches this file's actual depth
 import DataTable from "../../../../Common_Component/DataTable";
 import "../SuperAdminDashboard.css";
 import "./ManageMembers.css";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"; // kept only for building the photo URL below
 
 function initialsOf(name = "") {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "M";
@@ -15,7 +15,7 @@ export default function ManageMembers() {
   const [fetching, setFetching] = useState(true);
   const [fetchError, setFetchError] = useState("");
 
-  const [activeMember, setActiveMember] = useState(null); // row clicked
+  const [activeMember, setActiveMember] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
@@ -23,15 +23,11 @@ export default function ManageMembers() {
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState("");
 
-  const token = () => localStorage.getItem("access_token");
-
   const fetchMembers = async () => {
     try {
       setFetching(true);
       setFetchError("");
-      const res = await axios.get(`${API_BASE}/superadmin/members`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      const res = await api.get(`/superadmin/members`);
       setMembers(res.data);
     } catch (error) {
       console.error("Error fetching members:", error);
@@ -53,9 +49,7 @@ export default function ManageMembers() {
 
     try {
       setDetailLoading(true);
-      const res = await axios.get(`${API_BASE}/superadmin/members/${row.id}`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      const res = await api.get(`/superadmin/members/${row.id}`);
       setDetail(res.data);
     } catch (error) {
       console.error("Error fetching member detail:", error);
@@ -78,11 +72,7 @@ export default function ManageMembers() {
     try {
       setVerifying(true);
       setVerifyError("");
-      await axios.post(
-        `${API_BASE}/superadmin/members/${activeMember.id}/verify`,
-        {},
-        { headers: { Authorization: `Bearer ${token()}` } }
-      );
+      await api.post(`/superadmin/members/${activeMember.id}/verify`, {});
 
       setDetail((prev) => (prev ? { ...prev, isVerified: true } : prev));
       setMembers((prev) =>

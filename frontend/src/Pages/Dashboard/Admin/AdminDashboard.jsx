@@ -3,18 +3,24 @@ import Sidebar from "./components/Sidebar";
 import Topbar from "../../../Common_Component/Topbar"
 import Overview from "./pages/Overview";
 import ManageSanghas from "./pages/ManageSanghas";
+import ManageMembers from "../SuperAdmin/pages/ManageMembers";
+import ManageNotifications from "../SuperAdmin/pages/ManageNotifications";
 import AdminRequests from "./pages/AdminRequests";
 import "../SuperAdmin/SuperAdminDashboard.css"; // reuse the sa- theme tokens/layout
 
 const PAGE_TITLES = {
   overview: "Dashboard",
   sanghas: "My Sanghas",
+  members:"Manage Members",
+  notifications:"Manage Notification",
   "admin-requests": "Make Admin",
 };
 
 const PAGES = {
   overview: Overview,
   sanghas: ManageSanghas,
+  members:ManageMembers,
+  notifications:ManageNotifications,
   "admin-requests": AdminRequests,
 };
 

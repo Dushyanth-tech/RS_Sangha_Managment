@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
-
-const API_BASE = "http://localhost:8000";
+import api from "../../../../api/axiosInstance"; // ⚠️ verify depth
 
 export default function CreateSanghaModal({ onClose, onCreated }) {
   const [formData, setFormData] = useState({
@@ -12,14 +10,11 @@ export default function CreateSanghaModal({ onClose, onCreated }) {
   });
   const [loading, setLoading] = useState(false);
 
-  // Admin picker state
   const [adminQuery, setAdminQuery] = useState("");
   const [adminResults, setAdminResults] = useState([]);
   const [searchingAdmin, setSearchingAdmin] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const debounceRef = useRef(null);
-
-  const token = () => localStorage.getItem("access_token");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -37,9 +32,8 @@ export default function CreateSanghaModal({ onClose, onCreated }) {
     debounceRef.current = setTimeout(async () => {
       try {
         setSearchingAdmin(true);
-        const res = await axios.get(`${API_BASE}/users/search`, {
+        const res = await api.get(`/users/search`, {
           params: { q: adminQuery, role: "admin" },
-          headers: { Authorization: `Bearer ${token()}` },
         });
         setAdminResults(res.data);
       } catch (error) {
@@ -59,22 +53,21 @@ export default function CreateSanghaModal({ onClose, onCreated }) {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    setLoading(true);
-    await axios.post(
-      `${API_BASE}/sanghas`,
-      { ...formData, admin_id: selectedAdmin?.id ?? null },
-      { headers: { Authorization: `Bearer ${token()}` } }
-    );
-    onCreated();   // no argument now — just a "done" signal
-  } catch (error) {
-    console.error("Error creating sangha:", error);
-    if (error.response) console.log("Backend error:", error.response.data);
-  } finally {
-    setLoading(false);
-  }
-};
+    e.preventDefault();
+    try {
+      setLoading(true);
+      await api.post(`/sanghas`, {
+        ...formData,
+        admin_id: selectedAdmin?.id ?? null,
+      });
+      onCreated();
+    } catch (error) {
+      console.error("Error creating sangha:", error);
+      if (error.response) console.log("Backend error:", error.response.data);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="sa-modal-overlay">
