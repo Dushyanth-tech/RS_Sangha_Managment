@@ -4,13 +4,13 @@ import {
   House,
   Building2,
   Bell,
-  UserRound,
-  LogOut,
   ChevronDown,
 } from "lucide-react";
 
 import "./MemberDashboard.css";
 import ProfileWizard from "./pages/ProfileWizard";
+import MySangha from "./pages/MySangha";
+import Notifications from "./pages/Notifications";
 
 export default function MemberDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -21,6 +21,8 @@ export default function MemberDashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   // ================= NOTIFICATIONS =================
+  // Lifted here (rather than living inside Notifications.jsx) because the
+  // unread count badge in the top nav needs this data too.
 
   const [notifications, setNotifications] = useState([]);
   const [notifLoading, setNotifLoading] = useState(true);
@@ -250,105 +252,17 @@ export default function MemberDashboard() {
           </>
         )}
 
-        {page === "sangha" && (
-          <section className="md-page">
-            <div className="md-page__header">
-              <h1 className="md-page__title">My Sangha</h1>
-              <p className="md-page__subtitle">
-                View your Sangha information and membership details.
-              </p>
-            </div>
-
-            <section className="md-panel">
-              <div className="md-empty">
-                <div className="md-empty__icon">
-                  <Building2 size={28} strokeWidth={1.8} />
-                </div>
-                <h3>No Sangha assigned</h3>
-                <p>Your Sangha information will appear here once you are assigned to a Sangha.</p>
-              </div>
-            </section>
-          </section>
-        )}
+        {page === "sangha" && <MySangha />}
 
         {page === "notifications" && (
-          <section className="md-page">
-            <div className="md-page__header">
-              <h1 className="md-page__title">Notifications</h1>
-              <p className="md-page__subtitle">
-                View your latest Sangha notifications and updates.
-              </p>
-            </div>
-
-            {notifError && (
-              <div className="md-notif-error">
-                {notifError}{" "}
-                <button type="button" className="md-notif-error__retry" onClick={fetchNotifications}>
-                  Retry
-                </button>
-              </div>
-            )}
-
-            {notifLoading ? (
-              <section className="md-panel">
-                <div className="md-empty">
-                  <p>Loading notifications...</p>
-                </div>
-              </section>
-            ) : notifications.length === 0 ? (
-              <section className="md-panel">
-                <div className="md-empty">
-                  <div className="md-empty__icon">
-                    <Bell size={28} strokeWidth={1.8} />
-                  </div>
-                  <h3>No notifications</h3>
-                  <p>Your notifications will appear here when you receive updates.</p>
-                </div>
-              </section>
-            ) : (
-              <div className="md-notif-list">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`md-notif-item ${!notification.isRead ? "md-notif-item--unread" : ""}`}
-                    onClick={() => handleMarkRead(notification)}
-                  >
-                    <div className="md-notif-item__icon">
-                      <Bell size={18} strokeWidth={2} />
-                    </div>
-
-                    <div className="md-notif-item__body">
-                      <div className="md-notif-item__top">
-                        <strong>{notification.title}</strong>
-                        {!notification.isRead && (
-                          <span className="md-notif-item__dot">
-                            {markingId === notification.id ? "..." : "•"}
-                          </span>
-                        )}
-                      </div>
-
-                      <p>{notification.message}</p>
-
-                      {notification.path && notification.path.length > 0 && (
-                        <div className="md-notif-item__path">
-                          {notification.path.map((step, index) => (
-                            <React.Fragment key={step}>
-                              <span className="md-notif-item__path-step">{step}</span>
-                              {index < notification.path.length - 1 && (
-                                <span className="md-notif-item__path-arrow">→</span>
-                              )}
-                            </React.Fragment>
-                          ))}
-                        </div>
-                      )}
-
-                      <span className="md-notif-item__time">{notification.sentAt}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          <Notifications
+            notifications={notifications}
+            loading={notifLoading}
+            error={notifError}
+            markingId={markingId}
+            onRetry={fetchNotifications}
+            onMarkRead={handleMarkRead}
+          />
         )}
 
         {page === "profile" && (
