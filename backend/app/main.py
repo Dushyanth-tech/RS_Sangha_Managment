@@ -226,6 +226,102 @@ def list_sanghas(db=Depends(get_db), current_user_id=Depends(get_current_user)):
         for s, admin_name, subadmin_name in rows
     ]
 
+
+@app.get("/member/my-sangha")
+def get_my_sangha(
+    db=Depends(get_db),
+    current_user_id=Depends(get_current_user)
+):
+    current_user = db.query(User).filter(
+        User.id == int(current_user_id)
+    ).first()
+
+    if not current_user:
+        raise HTTPException(
+            status_code=401,
+            detail="User not found."
+        )
+
+    if current_user.role != "member":
+        raise HTTPException(
+            status_code=403,
+            detail="Only members can access this endpoint."
+        )
+
+    if current_user.sangha_id is None:
+        return []
+
+    admin = aliased(User)
+
+    result = (
+        db.query(
+            Sanghas,
+            admin.fullname.label("admin_name")
+        )
+        .outerjoin(admin, Sanghas.admin_id == admin.id)
+        .filter(Sanghas.id == current_user.sangha_id)
+        .first()
+    )
+
+    if not result:
+        return []
+
+    sangha, admin_name = result
+
+    return [{
+        "id": sangha.id,
+        "code": sangha.code,
+        "name": sangha.name,
+        "address": sangha.address,
+        "city": sangha.city,
+        "state": sangha.state,
+        "admin_name": admin_name,
+        "membersCount": sangha.membersCount
+    }]
+
+@app.get("/member/my-sangha/members")
+def get_my_sangha_members(
+    db=Depends(get_db),
+    current_user_id=Depends(get_current_user)
+):
+    current_user = db.query(User).filter(
+        User.id == int(current_user_id)
+    ).first()
+
+    if not current_user:
+        raise HTTPException(
+            status_code=401,
+            detail="User not found."
+        )
+
+    if current_user.role != "member":
+        raise HTTPException(
+            status_code=403,
+            detail="Only members can access this endpoint."
+        )
+
+    if current_user.sangha_id is None:
+        return []
+
+    members = (
+        db.query(User)
+        .filter(
+            User.sangha_id == current_user.sangha_id,
+            User.role == "member"
+        )
+        .order_by(User.fullname.asc())
+        .all()
+    )
+
+    return [
+        {
+            "id": member.id,
+            "name": member.fullname,
+            "address": member.address,
+            "is_current_user": member.id == current_user.id
+        }
+        for member in members
+    ]
 @app.post("/sanghas/{sangha_id}/members")
 def add_member(
     sangha_id: int,
