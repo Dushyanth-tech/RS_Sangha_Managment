@@ -1,0 +1,106 @@
+.ds-scan-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px dashed #d9c1cc;
+  border-radius: 10px;
+  background: #fdf7f9;
+}
+
+.ds-scan-section__title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.ds-scan-section__subtitle {
+  font-size: 0.8rem;
+  color: #898989;
+  margin-bottom: 1rem;
+}
+
+.ds-scan-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.ds-slot {
+  flex: 1 1 260px;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.ds-slot__preview {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f4f4;
+}
+
+.ds-slot__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ds-slot__icon {
+  font-size: 1.5rem;
+}
+
+.ds-slot__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ds-slot__label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.ds-slot__hint {
+  font-size: 0.75rem;
+  color: #898989;
+  margin: 0.15rem 0 0.5rem;
+}
+
+.ds-slot__upload-btn {
+  display: inline-block;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #d63384;
+  color: #d63384;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ds-slot__upload-btn:hover {
+  background: #fbeaf1;
+}
+
+.ds-slot__status {
+  font-size: 0.75rem;
+  color: #898989;
+  margin-top: 0.4rem;
+}
+
+.ds-slot__detected {
+  font-size: 0.78rem;
+  color: #157347;
+  margin-top: 0.4rem;
+}
+
+.ds-slot__error {
+  font-size: 0.78rem;
+  color: #c0392b;
+  margin-top: 0.4rem;
+}

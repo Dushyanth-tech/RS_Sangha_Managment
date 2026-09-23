@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime, date
-from sqlalchemy import Integer, String, ForeignKey, Boolean, Enum, DateTime, Text, func, Date, UniqueConstraint
+from sqlalchemy import Integer, String, ForeignKey, Boolean, Enum, DateTime, Text, func, Date, UniqueConstraint, LargeBinary
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.dbconnection import Base
 
@@ -44,9 +44,8 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(30), unique=True)
     email: Mapped[str] = mapped_column(String(50), unique=True)
     phone: Mapped[str] = mapped_column(String(15), unique=True)
-    aadhar_number: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
     address: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    password: Mapped[str] = mapped_column(String(255))          # hashed
+    password: Mapped[str] = mapped_column(String(255))
 
     role: Mapped[Role] = mapped_column(Enum(Role), default=Role.member)
     isVerified: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -55,19 +54,29 @@ class User(Base):
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     profile_photo_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # ---- ID Proof: Aadhaar or Passport ----
+    id_proof_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    id_proof_number_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    id_proof_number_hash: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    id_proof_image_enc: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    id_proof_image_content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # ---- PAN Card ----
+    pan_number_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pan_number_hash: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    pan_image_enc: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    pan_image_content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
     otp: Mapped[str | None] = mapped_column(String(6), nullable=True)
     otp_expiry: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    # Who created/invited this account (superadmin->admin, admin->subadmin/member, etc.)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     creator: Mapped["User"] = relationship(remote_side=[id])
 
-    # Meaningful only for role=member or role=subadmin — the sangha they belong to / manage
     sangha_id: Mapped[int | None] = mapped_column(ForeignKey("sanghas.id"), nullable=True)
     sangha: Mapped["Sanghas"] = relationship(
         back_populates="members", foreign_keys=[sangha_id]
     )
-
 
 class Sanghas(Base):
     __tablename__ = "sanghas"
@@ -134,7 +143,6 @@ class BankDetails(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
 
-    pan_number_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     account_number_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     account_holder_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     bank_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -142,7 +150,7 @@ class BankDetails(Base):
     ifsc_code: Mapped[str | None] = mapped_column(String(11), nullable=True)
     branch_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
-
+    
 class Notification(Base):
     __tablename__ = "notifications"
 

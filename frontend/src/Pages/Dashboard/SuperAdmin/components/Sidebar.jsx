@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { key: "overview", label: "Overview", icon: House },
   { key: "admins", label: "Manage Admins", icon: ShieldCheck },
   { key: "sanghas", label: "Manage Sanghas", icon: Building2 },
-  { key: "verify", label: "Members Verification", icon: Users },
+  { key: "members", label: "Manage Members", icon: Users },
   { key: "subadmin-requests", label: "Subadmin Requests", icon: Mail },
   { key: "notifications", label: "Manage Notifications", icon: Bell },
   { key: "activity-log", label: "Activity Log", icon: ClipboardList },

@@ -1,5 +1,6 @@
-from app.crypto import encrypt_value, decrypt_value, mask_last4
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from app.crypto import encrypt_value, decrypt_value, mask_last4, encrypt_bytes, decrypt_bytes, hash_value
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload,SanghaUpdate, ProfileWizardUpdate, NotificationCreate, ClearNotificationsRequest
 from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus, BankDetails, Notification, NotificationRecipient
@@ -8,6 +9,7 @@ from app.auth import create_access_token, hash_password, verify_password, get_cu
 from sqlalchemy import or_,func, select
 from sqlalchemy.orm import aliased, Session
 from datetime import datetime, timezone
+import re
 import json
 import os, uuid
 
@@ -104,7 +106,6 @@ def register_user(user: NewUser, db = Depends(get_db)):
         email=user.email,
         phone=user.phone,
         password=hash_password(user.password),  # Hash the password before storing it
-        aadhar_number=user.aadhar_number
     )
 
     # Add the new user to the database
@@ -707,7 +708,6 @@ def get_members_for_admin(
             "email": member.email,
             "phone": member.phone,
             "address": member.address,
-            "aadhar_number": member.aadhar_number
         }
         for member in members
     ]
@@ -851,22 +851,22 @@ def create_admin_request(
         raise HTTPException(status_code=400, detail="A pending request already exists.")
 
     new_request = SubAdminRequest(
-        sangha_id=sangha.id,
-        admin_id=current_user.id,
-        requester_id=member.id,
-        subadmin_name=member.fullname,
-        subadmin_email=member.email,
-        subadmin_phone=member.phone or "",
-        address=member.address or "",
-        aadhar_number=member.aadhar_number or "",
-        message=data.message.strip(),
-        experience=None,
-        qualifications=None,
-        availability=None,
-        additional_info=None,
-        status=RequestStatus.pending,
-        rejection_reason=None,
-        reviewed_at=None
+    sangha_id=sangha.id,
+    admin_id=current_user.id,
+    requester_id=member.id,
+    subadmin_name=member.fullname,
+    subadmin_email=member.email,
+    subadmin_phone=member.phone or "",
+    address=member.address or "",
+    aadhar_number=decrypt_value(member.id_proof_number_enc) if member.id_proof_number_enc else "",
+    message=data.message.strip(),
+    experience=None,
+    qualifications=None,
+    availability=None,
+    additional_info=None,
+    status=RequestStatus.pending,
+    rejection_reason=None,
+    reviewed_at=None
     )
 
     db.add(new_request)
@@ -1198,10 +1198,7 @@ def upload_profile_photo(
 
 
 @app.get("/me/profile-wizard")
-def get_profile_wizard(
-    db: Session = Depends(get_db),
-    current_user_id=Depends(get_current_user),
-):
+def get_profile_wizard(db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
     user = db.query(User).filter(User.id == int(current_user_id)).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found.")
@@ -1215,54 +1212,124 @@ def get_profile_wizard(
             "email": user.email,
             "phone": user.phone,
             "address": user.address,
-            "aadhar_number_masked": mask_last4(user.aadhar_number) if user.aadhar_number else None,
+            "id_proof_type": user.id_proof_type,
+            "id_proof_number_masked": mask_last4(decrypt_value(user.id_proof_number_enc)) if user.id_proof_number_enc else None,
             "profile_photo_url": user.profile_photo_url,
         },
         "banking": {
-            "pan_number_masked": mask_last4(decrypt_value(bank.pan_number_enc)) if bank and bank.pan_number_enc else None,
+            "pan_number_masked": mask_last4(decrypt_value(user.pan_number_enc)) if user.pan_number_enc else None,
             "account_number_masked": mask_last4(decrypt_value(bank.account_number_enc)) if bank and bank.account_number_enc else None,
             "account_holder_name": bank.account_holder_name if bank else None,
             "bank_name": bank.bank_name if bank else None,
             "account_type": bank.account_type if bank else None,
             "ifsc_code": bank.ifsc_code if bank else None,
             "branch_name": bank.branch_name if bank else None,
-        } if bank else None,
+        },
     }
 
 
-@app.patch("/me/complete-profile")
-def complete_profile(
-    payload: ProfileWizardUpdate,
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+@app.patch("/me/complete-profile")   # was @app.post(...)
+async def complete_profile(
+    fullname: str | None = Form(None),
+    date_of_birth: str | None = Form(None),
+    phone: str | None = Form(None),
+    address: str | None = Form(None),
+    id_proof_number: str | None = Form(None),
+    id_proof_type: str | None = Form(None),
+    id_proof_image: UploadFile | None = File(None),
+    pan_number: str | None = Form(None),
+    pan_image: UploadFile | None = File(None),
+    account_number: str | None = Form(None),
+    account_holder_name: str | None = Form(None),
+    bank_name: str | None = Form(None),
+    account_type: str | None = Form(None),
+    ifsc_code: str | None = Form(None),
+    branch_name: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user_id=Depends(get_current_user),
 ):
+    # ...body unchanged from what I gave you before...
     user = db.query(User).filter(User.id == int(current_user_id)).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found.")
 
-    if payload.profile:
-        for field, value in payload.profile.dict(exclude_unset=True).items():
-            if value not in (None, ""):
-                setattr(user, field, value)
+    if fullname:
+        user.fullname = fullname.strip()
+    if date_of_birth:
+        user.date_of_birth = date_of_birth
+    if phone:
+        user.phone = phone.strip()
+    if address:
+        user.address = address.strip()
 
-    if payload.banking:
+    if id_proof_type:
+        if id_proof_type not in ("aadhaar", "passport"):
+            raise HTTPException(422, detail="id_proof_type must be 'aadhaar' or 'passport'.")
+        user.id_proof_type = id_proof_type
+
+    if id_proof_number:
+        cleaned = id_proof_number.strip().upper()
+        h = hash_value(cleaned)
+        clash = db.query(User).filter(User.id_proof_number_hash == h, User.id != user.id).first()
+        if clash:
+            raise HTTPException(422, detail="This ID proof number is already registered to another account.")
+        user.id_proof_number_enc = encrypt_value(cleaned)
+        user.id_proof_number_hash = h
+
+    if id_proof_image is not None:
+        if id_proof_image.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(422, detail="ID proof image must be JPEG, PNG, or WEBP.")
+        raw = await id_proof_image.read()
+        user.id_proof_image_enc = encrypt_bytes(raw)
+        user.id_proof_image_content_type = id_proof_image.content_type
+
+    if pan_number:
+        pan = pan_number.strip().upper()
+        if not re.match(r"^[A-Z]{5}[0-9]{4}[A-Z]$", pan):
+            raise HTTPException(422, detail="Invalid PAN format.")
+        h = hash_value(pan)
+        clash = db.query(User).filter(User.pan_number_hash == h, User.id != user.id).first()
+        if clash:
+            raise HTTPException(422, detail="This PAN is already registered to another account.")
+        user.pan_number_enc = encrypt_value(pan)
+        user.pan_number_hash = h
+
+    if pan_image is not None:
+        if pan_image.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(422, detail="PAN image must be JPEG, PNG, or WEBP.")
+        raw = await pan_image.read()
+        user.pan_image_enc = encrypt_bytes(raw)
+        user.pan_image_content_type = pan_image.content_type
+
+    if any([account_number, account_holder_name, bank_name, account_type, ifsc_code, branch_name]):
         bank = db.query(BankDetails).filter(BankDetails.user_id == user.id).first()
         if not bank:
             bank = BankDetails(user_id=user.id)
             db.add(bank)
 
-        data = payload.banking.dict(exclude_unset=True)
-        if data.get("pan_number"):
-            bank.pan_number_enc = encrypt_value(data["pan_number"])
-        if data.get("account_number"):
-            bank.account_number_enc = encrypt_value(data["account_number"])
-        for field in ("account_holder_name", "bank_name", "account_type", "ifsc_code", "branch_name"):
-            if data.get(field):
-                setattr(bank, field, data[field])
+        if account_number:
+            digits = re.sub(r"\D", "", account_number.strip())
+            if not (9 <= len(digits) <= 18):
+                raise HTTPException(422, detail="Account number length looks invalid.")
+            bank.account_number_enc = encrypt_value(digits)
+        if account_holder_name:
+            bank.account_holder_name = account_holder_name.strip()
+        if bank_name:
+            bank.bank_name = bank_name.strip()
+        if account_type:
+            bank.account_type = account_type
+        if ifsc_code:
+            ifsc = ifsc_code.strip().upper()
+            if not re.match(r"^[A-Z]{4}0[A-Z0-9]{6}$", ifsc):
+                raise HTTPException(422, detail="Invalid IFSC code.")
+            bank.ifsc_code = ifsc
+        if branch_name:
+            bank.branch_name = branch_name.strip()
 
     db.commit()
     return {"detail": "Profile updated successfully."}
-
 
 
 
@@ -1275,12 +1342,7 @@ def _require_superadmin(db: Session, current_user_id):
     return user
 
 
-def _resolve_recipient_ids(
-    db: Session,
-    rule: str,
-    sangha_ids: list[int] | None
-) -> list[int]:
-
+def _resolve_recipient_ids(db: Session, rule: str, sangha_ids: list[int] | None) -> list[int]:
     query = db.query(User.id).filter(User.role == "member")
 
     if sangha_ids:
@@ -1288,20 +1350,16 @@ def _resolve_recipient_ids(
     else:
         query = query.filter(User.sangha_id.is_not(None))
 
-    # Members without completed profile
     if rule == "Members Without Completed Profile":
-
         query = query.filter(
             or_(
                 User.date_of_birth.is_(None),
                 User.address.is_(None),
-                User.aadhar_number.is_(None),
+                User.id_proof_number_enc.is_(None),
             )
         )
 
-    # Members without completed banking details
     elif rule == "Members Without Banking Details":
-
         incomplete_banking_users = (
             db.query(BankDetails.user_id)
             .filter(
@@ -1311,22 +1369,19 @@ def _resolve_recipient_ids(
                     BankDetails.account_type.is_(None),
                     BankDetails.ifsc_code.is_(None),
                     BankDetails.branch_name.is_(None),
-                    BankDetails.pan_number_enc.is_(None),
                     BankDetails.account_number_enc.is_(None),
                 )
             )
         )
-
         query = query.filter(
             or_(
+                User.pan_number_enc.is_(None),
                 ~User.id.in_(db.query(BankDetails.user_id)),
                 User.id.in_(incomplete_banking_users),
             )
         )
 
-    # Members without profile OR banking details
     elif rule == "Members Without Completed Profile or Banking Details":
-
         incomplete_banking_users = (
             db.query(BankDetails.user_id)
             .filter(
@@ -1336,17 +1391,16 @@ def _resolve_recipient_ids(
                     BankDetails.account_type.is_(None),
                     BankDetails.ifsc_code.is_(None),
                     BankDetails.branch_name.is_(None),
-                    BankDetails.pan_number_enc.is_(None),
                     BankDetails.account_number_enc.is_(None),
                 )
             )
         )
-
         query = query.filter(
             or_(
                 User.date_of_birth.is_(None),
                 User.address.is_(None),
-                User.aadhar_number.is_(None),
+                User.id_proof_number_enc.is_(None),
+                User.pan_number_enc.is_(None),
                 ~User.id.in_(db.query(BankDetails.user_id)),
                 User.id.in_(incomplete_banking_users),
             )
@@ -1375,6 +1429,39 @@ def _serialize(db: Session, n: Notification) -> dict:
         "message": n.message,
         "path": json.loads(n.navigation_path) if n.navigation_path else [],
     }
+
+@app.get("/me/pan-image")
+def get_my_pan_image(db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
+    user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not user or not user.pan_image_enc:
+        raise HTTPException(404, "No PAN image on file.")
+    return Response(content=decrypt_bytes(user.pan_image_enc), media_type=user.pan_image_content_type or "image/jpeg")
+
+
+@app.get("/me/id-proof-image")
+def get_my_id_proof_image(db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
+    user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not user or not user.id_proof_image_enc:
+        raise HTTPException(404, "No ID proof image on file.")
+    return Response(content=decrypt_bytes(user.id_proof_image_enc), media_type=user.id_proof_image_content_type or "image/jpeg")
+
+
+@app.get("/superadmin/members/{member_id}/pan-image")
+def get_member_pan_image(member_id: int, db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
+    _require_superadmin(db, current_user_id)
+    user = db.query(User).filter(User.id == member_id).first()
+    if not user or not user.pan_image_enc:
+        raise HTTPException(404, "No PAN image on file.")
+    return Response(content=decrypt_bytes(user.pan_image_enc), media_type=user.pan_image_content_type or "image/jpeg")
+
+
+@app.get("/superadmin/members/{member_id}/id-proof-image")
+def get_member_id_proof_image(member_id: int, db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
+    _require_superadmin(db, current_user_id)
+    user = db.query(User).filter(User.id == member_id).first()
+    if not user or not user.id_proof_image_enc:
+        raise HTTPException(404, "No ID proof image on file.")
+    return Response(content=decrypt_bytes(user.id_proof_image_enc), media_type=user.id_proof_image_content_type or "image/jpeg")
 
 @app.get("/notifications")
 def list_notifications(db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
@@ -1528,7 +1615,7 @@ def _require_superadmin(db: Session, current_user_id):
     user = db.query(User).filter(User.id == int(current_user_id)).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found.")
-    if user.role != "superadmin":
+    if user.role != "superadmin" and user.role!="admin":
         raise HTTPException(status_code=403, detail="Only superadmin can access this.")
     return user
 
@@ -1542,15 +1629,15 @@ def list_members(db: Session = Depends(get_db), current_user_id=Depends(get_curr
 
     rows = (
         db.query(User, sangha.name, admin.fullname)
-        .join(BankDetails, BankDetails.user_id == User.id)  # inner join — excludes members with no banking row at all
+        .join(BankDetails, BankDetails.user_id == User.id)
         .outerjoin(sangha, User.sangha_id == sangha.id)
         .outerjoin(admin, sangha.admin_id == admin.id)
         .filter(
             User.role == "member",
             User.date_of_birth.is_not(None),
             User.address.is_not(None),
-            User.aadhar_number.is_not(None),
-            BankDetails.pan_number_enc.is_not(None),
+            User.id_proof_number_enc.is_not(None),
+            User.pan_number_enc.is_not(None),
             BankDetails.account_number_enc.is_not(None),
         )
         .all()
@@ -1570,11 +1657,7 @@ def list_members(db: Session = Depends(get_db), current_user_id=Depends(get_curr
     ]
 
 @app.get("/superadmin/members/{member_id}")
-def get_member_detail(
-    member_id: int,
-    db: Session = Depends(get_db),
-    current_user_id=Depends(get_current_user),
-):
+def get_member_detail(member_id: int, db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
     _require_superadmin(db, current_user_id)
 
     member = db.query(User).filter(User.id == member_id, User.role == "member").first()
@@ -1597,12 +1680,13 @@ def get_member_detail(
             "phone": member.phone,
             "address": member.address,
             "date_of_birth": member.date_of_birth,
-            "aadhar_number": member.aadhar_number,
+            "id_proof_type": member.id_proof_type,
+            "id_proof_number": decrypt_value(member.id_proof_number_enc) if member.id_proof_number_enc else None,
+            "pan_number": decrypt_value(member.pan_number_enc) if member.pan_number_enc else None,
             "profile_photo_url": member.profile_photo_url,
             "sanghaName": sangha_name or "-",
         },
         "banking": {
-            "pan_number": decrypt_value(bank.pan_number_enc) if bank and bank.pan_number_enc else None,
             "account_number": decrypt_value(bank.account_number_enc) if bank and bank.account_number_enc else None,
             "account_holder_name": bank.account_holder_name if bank else None,
             "bank_name": bank.bank_name if bank else None,

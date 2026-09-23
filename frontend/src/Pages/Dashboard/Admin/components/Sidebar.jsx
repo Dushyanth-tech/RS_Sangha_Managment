@@ -12,7 +12,7 @@ import {
 const NAV_ITEMS = [
   { key: "overview", label: "Overview", icon: House },
   { key: "sanghas", label: "My Sanghas", icon: Building2 },
-  { key: "verify", label: "Members Verifications", icon: Users },
+  { key: "members", label: "Manage Members", icon: Users },
   { key: "notifications", label: "Manage Notifications", icon: Bell },
   { key: "admin-requests", label: "Make Admin", icon: Mail },
 ];
@@ -29,7 +29,7 @@ export default function Sidebar({ activePage, onNavigate, collapsed }) {
 
         {!collapsed && (
           <span className="sa-sidebar__brand-text">
-            Super Admin
+            Admin
           </span>
         )}
       </div>

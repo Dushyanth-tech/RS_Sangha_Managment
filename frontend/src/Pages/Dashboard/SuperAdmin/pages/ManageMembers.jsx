@@ -50,6 +50,7 @@ export default function ManageMembers() {
     try {
       setDetailLoading(true);
       const res = await api.get(`/superadmin/members/${row.id}`);
+      // console.log(res.data)
       setDetail(res.data);
     } catch (error) {
       console.error("Error fetching member detail:", error);
@@ -177,7 +178,9 @@ export default function ManageMembers() {
                       <div className="mm-field"><span>Email</span><strong>{detail.profile.email || "-"}</strong></div>
                       <div className="mm-field"><span>Phone</span><strong>{detail.profile.phone || "-"}</strong></div>
                       <div className="mm-field"><span>Date of Birth</span><strong>{detail.profile.date_of_birth || "-"}</strong></div>
-                      <div className="mm-field"><span>Aadhar Number</span><strong>{detail.profile.aadhar_number || "-"}</strong></div>
+                      <div className="mm-field"><span>PAN Number</span><strong>{detail.profile.pan_number || "-"}</strong></div>
+                      <div className="mm-field"><span>ID Proof Type</span><strong>{detail.profile.id_proof_type || "-"}</strong></div>
+                      <div className="mm-field"><span>ID Proof</span><strong>{detail.profile.id_proof_number || "-"}</strong></div>
                       <div className="mm-field mm-field--wide"><span>Address</span><strong>{detail.profile.address || "-"}</strong></div>
                       <div className="mm-field"><span>Sangha</span><strong>{detail.profile.sanghaName}</strong></div>
                     </div>
@@ -187,7 +190,6 @@ export default function ManageMembers() {
                     <h4>Banking Details</h4>
                     {detail.banking ? (
                       <div className="mm-grid">
-                        <div className="mm-field"><span>PAN Number</span><strong>{detail.banking.pan_number || "-"}</strong></div>
                         <div className="mm-field"><span>Account Number</span><strong>{detail.banking.account_number || "-"}</strong></div>
                         <div className="mm-field"><span>Account Holder</span><strong>{detail.banking.account_holder_name || "-"}</strong></div>
                         <div className="mm-field"><span>Bank Name</span><strong>{detail.banking.bank_name || "-"}</strong></div>

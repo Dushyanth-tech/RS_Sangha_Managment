@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   getProfileWizard,
@@ -5,6 +6,7 @@ import {
   saveProfileWizard,
   getErrorMessage,
 } from "../api/profileApi";
+import DocumentScan from "./DocumentScan";
 import "./ProfileWizard.css";
 
 const STEPS = [
@@ -18,25 +20,27 @@ const ACCOUNT_TYPES = [
 ];
 
 export default function ProfileWizard({ onBack }) {
-  const [step, setStep] = useState(0); // 0 = Profile Details, 1 = Banking Details
+  const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+
+  const [existing, setExisting] = useState({
+    profile: null,
+    banking: null,
+  });
 
   const [photoUrl, setPhotoUrl] = useState(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState("");
   const fileInputRef = useRef(null);
 
-  const [existing, setExisting] = useState({ profile: null, banking: null });
-
   const [profileForm, setProfileForm] = useState({
     fullname: "",
     date_of_birth: "",
     phone: "",
     address: "",
-    aadhar_number: "",
+    id_proof_number: "",
   });
-  const [email, setEmail] = useState("");
 
   const [bankForm, setBankForm] = useState({
     pan_number: "",
@@ -48,133 +52,239 @@ export default function ProfileWizard({ onBack }) {
     branch_name: "",
   });
 
+  const [email, setEmail] = useState("");
+
+  // Actual document files
+  const [panFile, setPanFile] = useState(null);
+  const [idProofFile, setIdProofFile] = useState(null);
+
+  // Aadhaar or Passport
+  const [idProofType, setIdProofType] = useState("");
+
   const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState("");
-  const [saving, setSaving] = useState(false);
   const [savingStep1, setSavingStep1] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
+  // --------------------------------------------------
+  // LOAD PROFILE
+  // --------------------------------------------------
+
   useEffect(() => {
-    (async () => {
+    const loadProfile = async () => {
       try {
         setLoading(true);
+        setLoadError("");
+
         const res = await getProfileWizard();
         const { profile, banking } = res.data;
+
         setExisting({ profile, banking });
-        setEmail(profile.email || "");
-        setPhotoUrl(profile.profile_photo_url || null);
+
+        setEmail(profile?.email || "");
+        setPhotoUrl(profile?.profile_photo_url || null);
+
         setProfileForm({
-          fullname: profile.fullname || "",
-          date_of_birth: profile.date_of_birth || "",
-          phone: profile.phone || "",
-          address: profile.address || "",
-          aadhar_number: "",
+          fullname: profile?.fullname || "",
+          date_of_birth: profile?.date_of_birth || "",
+          phone: profile?.phone || "",
+          address: profile?.address || "",
+          id_proof_number: "",
         });
+
         if (banking) {
-          setBankForm((prev) => ({
-            ...prev,
-            account_holder_name: banking.account_holder_name || "",
+          setBankForm((previous) => ({
+            ...previous,
+            account_holder_name:
+              banking.account_holder_name || "",
             bank_name: banking.bank_name || "",
             account_type: banking.account_type || "savings",
             ifsc_code: banking.ifsc_code || "",
             branch_name: banking.branch_name || "",
           }));
         }
-      } catch (err) {
-        setLoadError(getErrorMessage(err));
+      } catch (error) {
+        setLoadError(getErrorMessage(error));
       } finally {
         setLoading(false);
       }
-    })();
+    };
+
+    loadProfile();
   }, []);
 
-  const handlePhotoClick = () => fileInputRef.current?.click();
+  // --------------------------------------------------
+  // FORM HELPERS
+  // --------------------------------------------------
 
-  const handlePhotoChange = async (e) => {
-    const file = e.target.files?.[0];
+  const updateProfileField = (key, value) => {
+    setProfileForm((previous) => ({
+      ...previous,
+      [key]: value,
+    }));
+
+    setFieldErrors((previous) => ({
+      ...previous,
+      [key]: undefined,
+    }));
+  };
+
+  const updateBankField = (key, value) => {
+    setBankForm((previous) => ({
+      ...previous,
+      [key]: value,
+    }));
+
+    setFieldErrors((previous) => ({
+      ...previous,
+      [key]: undefined,
+    }));
+  };
+
+  // --------------------------------------------------
+  // PROFILE PHOTO
+  // --------------------------------------------------
+
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = async (event) => {
+    const file = event.target.files?.[0];
+
     if (!file) return;
 
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setPhotoError("Please choose a JPEG, PNG, or WEBP image.");
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setPhotoError(
+        "Please choose a JPEG, PNG, or WEBP image."
+      );
       return;
     }
 
     try {
       setPhotoUploading(true);
       setPhotoError("");
-      const res = await uploadProfilePhoto(file);
-      setPhotoUrl(res.data.profile_photo_url);
-    } catch (err) {
-      setPhotoError(getErrorMessage(err));
+
+      const response = await uploadProfilePhoto(file);
+
+      setPhotoUrl(response.data.profile_photo_url);
+    } catch (error) {
+      setPhotoError(getErrorMessage(error));
     } finally {
       setPhotoUploading(false);
-      e.target.value = "";
+      event.target.value = "";
     }
   };
 
-  const updateProfileField = (key, value) => {
-    setProfileForm((prev) => ({ ...prev, [key]: value }));
-    setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
+  // --------------------------------------------------
+  // OCR HANDLERS
+  // --------------------------------------------------
+
+  const handlePanExtracted = (pan) => {
+    if (pan) {
+      updateBankField("pan_number", pan);
+    }
   };
 
-  const updateBankField = (key, value) => {
-    setBankForm((prev) => ({ ...prev, [key]: value }));
-    setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
+  const handleIdExtracted = ({
+    idNumber,
+    idProofType: detectedType,
+    dob,
+  }) => {
+    if (idNumber) {
+      updateProfileField("id_proof_number", idNumber);
+    }
+
+    if (detectedType) {
+      setIdProofType(detectedType);
+    }
+
+    if (dob) {
+      updateProfileField("date_of_birth", dob);
+    }
   };
 
-  const goNext = async () => {
+  // --------------------------------------------------
+  // DOCUMENT FILE HANDLERS
+  // --------------------------------------------------
+
+  const handlePanFileSelected = (file) => {
+    setPanFile(file);
+  };
+
+  const handleIdFileSelected = (file) => {
+    setIdProofFile(file);
+  };
+
+  // --------------------------------------------------
+  // VALIDATION
+  // --------------------------------------------------
+
+  const validateProfile = () => {
+    const errors = {};
+
+    if (!profileForm.fullname.trim()) {
+      errors.fullname = "Name is required.";
+    }
+
+    if (!profileForm.date_of_birth) {
+      errors.date_of_birth = "Date of birth is required.";
+    }
+
+    if (!profileForm.phone.trim()) {
+      errors.phone = "Phone number is required.";
+    }
+
+    if (!profileForm.address.trim()) {
+      errors.address = "Address is required.";
+    }
+
+    const hasExistingId =
+      existing.profile?.id_proof_number_masked;
+
+    if (
+      !profileForm.id_proof_number.trim() &&
+      !hasExistingId
+    ) {
+      errors.id_proof_number = "ID proof number is required.";
+    }
+
+    if (
+      profileForm.id_proof_number.trim() &&
+      !idProofType
+    ) {
+      errors.id_proof_type =
+        "Please select Aadhaar or Passport.";
+    }
+
+    return errors;
+  };
+
+  // --------------------------------------------------
+  // GO TO BANKING STEP
+  // --------------------------------------------------
+
+  const goNext = () => {
     setFormError("");
 
-    const errs = {};
-    if (!profileForm.fullname.trim()) errs.fullname = "Name is required.";
-    if (!profileForm.date_of_birth) errs.date_of_birth = "Date of birth is required.";
-    if (!profileForm.phone.trim()) errs.phone = "Phone number is required.";
-    if (!profileForm.address.trim()) errs.address = "Address is required.";
-    if (!profileForm.aadhar_number.trim() && !existing.profile?.aadhar_number_masked) {
-      errs.aadhar_number = "Aadhar number is required.";
-    }
+    const errors = validateProfile();
 
-    if (Object.keys(errs).length > 0) {
-      setFieldErrors(errs);
-      setFormError("Please fill in all required fields.");
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setFormError("Please fix the highlighted fields.");
       return;
     }
 
-    const profile = {};
-    if (profileForm.fullname.trim() !== (existing.profile?.fullname || "")) profile.fullname = profileForm.fullname.trim();
-    if (profileForm.date_of_birth) profile.date_of_birth = profileForm.date_of_birth;
-    if (profileForm.phone.trim()) profile.phone = profileForm.phone.trim();
-    if (profileForm.address.trim()) profile.address = profileForm.address.trim();
-    if (profileForm.aadhar_number.trim()) profile.aadhar_number = profileForm.aadhar_number.trim();
-
-    try {
-      setSavingStep1(true);
-      setFieldErrors({});
-      if (Object.keys(profile).length > 0) {
-        await saveProfileWizard({ profile });
-      }
-      setStep(1);
-    } catch (err) {
-      if (err?.response?.status === 422) {
-        const detail = err.response.data?.detail;
-        if (Array.isArray(detail)) {
-          const errsFromServer = {};
-          detail.forEach((d) => {
-            const key = d.loc?.[d.loc.length - 1];
-            if (key) errsFromServer[key] = d.msg;
-          });
-          setFieldErrors(errsFromServer);
-          setFormError("Please fix the highlighted fields.");
-        } else {
-          setFormError(detail || "Some information is invalid.");
-        }
-      } else {
-        setFormError(getErrorMessage(err));
-      }
-    } finally {
-      setSavingStep1(false);
-    }
+    setFieldErrors({});
+    setStep(1);
   };
 
   const goBack = () => {
@@ -182,119 +292,302 @@ export default function ProfileWizard({ onBack }) {
     setStep(0);
   };
 
-  const buildPayload = () => {
-    const profile = {};
-    if (profileForm.fullname.trim() && profileForm.fullname.trim() !== existing.profile?.fullname) {
-      profile.fullname = profileForm.fullname.trim();
+  // --------------------------------------------------
+  // BUILD FORMDATA
+  // --------------------------------------------------
+
+  const buildFormData = () => {
+    const formData = new FormData();
+
+    // Profile fields
+    if (profileForm.fullname.trim()) {
+      formData.append(
+        "fullname",
+        profileForm.fullname.trim()
+      );
     }
-    if (profileForm.date_of_birth) profile.date_of_birth = profileForm.date_of_birth;
-    if (profileForm.phone.trim()) profile.phone = profileForm.phone.trim();
-    if (profileForm.address.trim()) profile.address = profileForm.address.trim();
-    if (profileForm.aadhar_number.trim()) profile.aadhar_number = profileForm.aadhar_number.trim();
 
-    const banking = {};
-    if (bankForm.pan_number.trim()) banking.pan_number = bankForm.pan_number.trim();
-    if (bankForm.account_number.trim()) banking.account_number = bankForm.account_number.trim();
-    if (bankForm.account_holder_name.trim()) banking.account_holder_name = bankForm.account_holder_name.trim();
-    if (bankForm.bank_name.trim()) banking.bank_name = bankForm.bank_name.trim();
-    if (bankForm.account_type) banking.account_type = bankForm.account_type;
-    if (bankForm.ifsc_code.trim()) banking.ifsc_code = bankForm.ifsc_code.trim();
-    if (bankForm.branch_name.trim()) banking.branch_name = bankForm.branch_name.trim();
+    if (profileForm.date_of_birth) {
+      formData.append(
+        "date_of_birth",
+        profileForm.date_of_birth
+      );
+    }
 
-    return {
-      profile: Object.keys(profile).length ? profile : undefined,
-      banking: Object.keys(banking).length ? banking : undefined,
-    };
+    if (profileForm.phone.trim()) {
+      formData.append(
+        "phone",
+        profileForm.phone.trim()
+      );
+    }
+
+    if (profileForm.address.trim()) {
+      formData.append(
+        "address",
+        profileForm.address.trim()
+      );
+    }
+
+    // ID proof details
+    if (profileForm.id_proof_number.trim()) {
+      formData.append(
+        "id_proof_number",
+        profileForm.id_proof_number.trim()
+      );
+    }
+
+    if (idProofType) {
+      formData.append("id_proof_type", idProofType);
+    }
+
+    if (idProofFile) {
+      formData.append("id_proof_image", idProofFile);
+    }
+
+    // PAN details
+    if (bankForm.pan_number.trim()) {
+      formData.append(
+        "pan_number",
+        bankForm.pan_number.trim().toUpperCase()
+      );
+    }
+
+    if (panFile) {
+      formData.append("pan_image", panFile);
+    }
+
+    // Banking details
+    if (bankForm.account_number.trim()) {
+      formData.append(
+        "account_number",
+        bankForm.account_number.trim()
+      );
+    }
+
+    if (bankForm.account_holder_name.trim()) {
+      formData.append(
+        "account_holder_name",
+        bankForm.account_holder_name.trim()
+      );
+    }
+
+    if (bankForm.bank_name.trim()) {
+      formData.append(
+        "bank_name",
+        bankForm.bank_name.trim()
+      );
+    }
+
+    if (bankForm.account_type) {
+      formData.append(
+        "account_type",
+        bankForm.account_type
+      );
+    }
+
+    if (bankForm.ifsc_code.trim()) {
+      formData.append(
+        "ifsc_code",
+        bankForm.ifsc_code.trim().toUpperCase()
+      );
+    }
+
+    if (bankForm.branch_name.trim()) {
+      formData.append(
+        "branch_name",
+        bankForm.branch_name.trim()
+      );
+    }
+
+    return formData;
   };
+
+  // --------------------------------------------------
+  // SAVE EVERYTHING
+  // --------------------------------------------------
 
   const handleSave = async () => {
     try {
       setSaving(true);
       setFormError("");
       setFieldErrors({});
-      await saveProfileWizard(buildPayload());
+
+      const formData = buildFormData();
+
+      // Sends multipart/form-data with images and fields
+      await saveProfileWizard(formData);
+
       setSuccess(true);
       setEditMode(false);
-      setTimeout(() => onBack(), 1200);
-    } catch (err) {
-      if (err?.response?.status === 422) {
-        const detail = err.response.data?.detail;
+
+      setTimeout(() => {
+        onBack();
+      }, 1200);
+    } catch (error) {
+      if (error?.response?.status === 422) {
+        const detail = error.response.data?.detail;
+
         if (Array.isArray(detail)) {
-          const errs = {};
-          detail.forEach((d) => {
-            const key = d.loc?.[d.loc.length - 1];
-            if (key) errs[key] = d.msg;
+          const errors = {};
+
+          detail.forEach((item) => {
+            const key = item.loc?.[item.loc.length - 1];
+
+            if (key) {
+              errors[key] = item.msg;
+            }
           });
-          setFieldErrors(errs);
+
+          setFieldErrors(errors);
           setFormError("Please fix the highlighted fields.");
         } else {
-          setFormError(detail || "Some information is invalid.");
+          setFormError(
+            detail || "Some information is invalid."
+          );
         }
       } else {
-        setFormError(getErrorMessage(err));
+        setFormError(getErrorMessage(error));
       }
     } finally {
       setSaving(false);
     }
   };
 
-  const initials = (profileForm.fullname || "M").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  // --------------------------------------------------
+  // INITIALS
+  // --------------------------------------------------
+
+  const initials = (
+    profileForm.fullname || "M"
+  )
+    .split(" ")
+    .map((word) => word[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  // --------------------------------------------------
+  // LOADING
+  // --------------------------------------------------
 
   if (loading) {
     return (
       <div className="pw-page">
-        <div className="pw-loading">Loading your profile...</div>
+        <div className="pw-loading">
+          Loading your profile...
+        </div>
       </div>
     );
   }
 
+  // --------------------------------------------------
+  // UI
+  // --------------------------------------------------
+
   return (
     <div className="pw-page">
       <div className="pw-header-row">
-        <h1 className="pw-title">Complete Your Profile</h1>
+        <h1 className="pw-title">
+          Complete Your Profile
+        </h1>
+
         <button
           type="button"
-          className={`pw-edit-toggle ${editMode ? "pw-edit-toggle--active" : ""}`}
-          onClick={() => setEditMode((v) => !v)}
-          title={editMode ? "Editing enabled" : "Click to edit"}
+          className={`pw-edit-toggle ${
+            editMode ? "pw-edit-toggle--active" : ""
+          }`}
+          onClick={() => setEditMode((value) => !value)}
         >
           ✎ {editMode ? "Editing" : "Edit"}
         </button>
       </div>
 
-      {/* Progress bar */}
       <div className="pw-progress">
-        {STEPS.map((s, i) => (
-          <React.Fragment key={s.key}>
+        {STEPS.map((item, index) => (
+          <React.Fragment key={item.key}>
             <div className="pw-progress__step">
-              <div className={`pw-progress__circle ${i < step ? "pw-progress__circle--done" : ""} ${i === step ? "pw-progress__circle--active" : ""}`}>
-                {i < step ? "✓" : i + 1}
+              <div
+                className={`pw-progress__circle ${
+                  index < step
+                    ? "pw-progress__circle--done"
+                    : ""
+                } ${
+                  index === step
+                    ? "pw-progress__circle--active"
+                    : ""
+                }`}
+              >
+                {index < step ? "✓" : index + 1}
               </div>
-              <div className={`pw-progress__label ${i === step ? "pw-progress__label--active" : ""}`}>{s.label}</div>
+
+              <div
+                className={`pw-progress__label ${
+                  index === step
+                    ? "pw-progress__label--active"
+                    : ""
+                }`}
+              >
+                {item.label}
+              </div>
             </div>
-            {i < STEPS.length - 1 && (
-              <div className={`pw-progress__line ${i < step ? "pw-progress__line--done" : ""}`} />
+
+            {index < STEPS.length - 1 && (
+              <div
+                className={`pw-progress__line ${
+                  index < step
+                    ? "pw-progress__line--done"
+                    : ""
+                }`}
+              />
             )}
           </React.Fragment>
         ))}
       </div>
 
-      {loadError && <div className="pw-error-banner">{loadError}</div>}
-      {formError && <div className="pw-error-banner">{formError}</div>}
-      {success && <div className="pw-success-banner">Saved successfully — taking you back...</div>}
+      {loadError && (
+        <div className="pw-error-banner">
+          {loadError}
+        </div>
+      )}
+
+      {formError && (
+        <div className="pw-error-banner">
+          {formError}
+        </div>
+      )}
+
+      {success && (
+        <div className="pw-success-banner">
+          Saved successfully — taking you back...
+        </div>
+      )}
 
       <div className="pw-card">
         {step === 0 && (
           <>
             <div className="pw-photo-row">
-              <button className="pw-photo" onClick={handlePhotoClick} disabled={photoUploading || !editMode} type="button">
+              <button
+                className="pw-photo"
+                onClick={handlePhotoClick}
+                disabled={photoUploading || !editMode}
+                type="button"
+              >
                 {photoUrl ? (
-                  <img src={`http://localhost:8000${photoUrl}`} alt="Profile" />
+                  <img
+                    src={`http://localhost:8000${photoUrl}`}
+                    alt="Profile"
+                  />
                 ) : (
-                  <span className="pw-photo__initials">{initials}</span>
+                  <span className="pw-photo__initials">
+                    {initials}
+                  </span>
                 )}
-                <span className="pw-photo__edit">{photoUploading ? "..." : "✎"}</span>
+
+                <span className="pw-photo__edit">
+                  {photoUploading ? "..." : "✎"}
+                </span>
               </button>
+
               <input
                 type="file"
                 ref={fileInputRef}
@@ -302,61 +595,244 @@ export default function ProfileWizard({ onBack }) {
                 style={{ display: "none" }}
                 onChange={handlePhotoChange}
               />
+
               <div>
-                <div className="pw-photo__label">Profile Photo</div>
-                <div className="pw-photo__hint">Click the circle to upload a JPEG, PNG, or WEBP image.</div>
-                {photoError && <div className="pw-field-error">{photoError}</div>}
+                <div className="pw-photo__label">
+                  Profile Photo
+                </div>
+
+                <div className="pw-photo__hint">
+                  Click the circle to upload a profile photo.
+                </div>
+
+                {photoError && (
+                  <div className="pw-field-error">
+                    {photoError}
+                  </div>
+                )}
               </div>
             </div>
+
+            {editMode && (
+              <DocumentScan
+                onPanExtracted={handlePanExtracted}
+                onPanFileSelected={handlePanFileSelected}
+                onIdExtracted={handleIdExtracted}
+                onIdFileSelected={handleIdFileSelected}
+              />
+            )}
 
             <div className="pw-grid">
               <div className="pw-field">
                 <label>Full Name</label>
-                <input className="pw-input" value={profileForm.fullname} onChange={(e) => updateProfileField("fullname", e.target.value)} disabled={!editMode} />
-                {fieldErrors.fullname && <div className="pw-field-error">{fieldErrors.fullname}</div>}
+
+                <input
+                  className="pw-input"
+                  value={profileForm.fullname}
+                  onChange={(event) =>
+                    updateProfileField(
+                      "fullname",
+                      event.target.value
+                    )
+                  }
+                  disabled={!editMode}
+                />
+
+                {fieldErrors.fullname && (
+                  <div className="pw-field-error">
+                    {fieldErrors.fullname}
+                  </div>
+                )}
               </div>
 
               <div className="pw-field">
                 <label>Date of Birth</label>
-                <input type="date" className="pw-input" value={profileForm.date_of_birth || ""} onChange={(e) => updateProfileField("date_of_birth", e.target.value)} disabled={!editMode} />
+
+                <input
+                  type="date"
+                  className="pw-input"
+                  value={profileForm.date_of_birth}
+                  onChange={(event) =>
+                    updateProfileField(
+                      "date_of_birth",
+                      event.target.value
+                    )
+                  }
+                  disabled={!editMode}
+                />
+
+                {fieldErrors.date_of_birth && (
+                  <div className="pw-field-error">
+                    {fieldErrors.date_of_birth}
+                  </div>
+                )}
               </div>
 
               <div className="pw-field">
                 <label>Email</label>
-                <input className="pw-input" value={email} disabled />
+
+                <input
+                  className="pw-input"
+                  value={email}
+                  disabled
+                />
               </div>
 
               <div className="pw-field">
                 <label>Phone Number</label>
-                <input className="pw-input" value={profileForm.phone} onChange={(e) => updateProfileField("phone", e.target.value)} disabled={!editMode} />
-                {fieldErrors.phone && <div className="pw-field-error">{fieldErrors.phone}</div>}
+
+                <input
+                  className="pw-input"
+                  value={profileForm.phone}
+                  onChange={(event) =>
+                    updateProfileField(
+                      "phone",
+                      event.target.value
+                    )
+                  }
+                  disabled={!editMode}
+                />
+
+                {fieldErrors.phone && (
+                  <div className="pw-field-error">
+                    {fieldErrors.phone}
+                  </div>
+                )}
               </div>
 
               <div className="pw-field pw-field--wide">
                 <label>Address</label>
-                <input className="pw-input" value={profileForm.address} onChange={(e) => updateProfileField("address", e.target.value)} disabled={!editMode} />
+
+                <input
+                  className="pw-input"
+                  value={profileForm.address}
+                  onChange={(event) =>
+                    updateProfileField(
+                      "address",
+                      event.target.value
+                    )
+                  }
+                  disabled={!editMode}
+                />
+
+                {fieldErrors.address && (
+                  <div className="pw-field-error">
+                    {fieldErrors.address}
+                  </div>
+                )}
+              </div>
+
+              <div className="pw-field">
+                <label>ID Proof Type</label>
+
+                <select
+                  className="pw-input"
+                  value={idProofType}
+                  onChange={(event) =>
+                    setIdProofType(event.target.value)
+                  }
+                  disabled={!editMode}
+                >
+                  <option value="">
+                    Select ID proof
+                  </option>
+                  <option value="aadhaar">
+                    Aadhaar
+                  </option>
+                  <option value="passport">
+                    Passport
+                  </option>
+                </select>
+
+                {fieldErrors.id_proof_type && (
+                  <div className="pw-field-error">
+                    {fieldErrors.id_proof_type}
+                  </div>
+                )}
+              </div>
+
+              <div className="pw-field">
+                <label>ID Proof Number</label>
+
+                <input
+                  className="pw-input"
+                  value={profileForm.id_proof_number}
+                  onChange={(event) =>
+                    updateProfileField(
+                      "id_proof_number",
+                      event.target.value.toUpperCase()
+                    )
+                  }
+                  placeholder={
+                    existing.profile?.id_proof_number_masked ||
+                    "Aadhaar or Passport number"
+                  }
+                  disabled={!editMode}
+                />
+
+                {existing.profile?.id_proof_number_masked && (
+                  <div className="pw-field-hint">
+                    On file:{" "}
+                    {existing.profile.id_proof_number_masked}
+                  </div>
+                )}
+
+                {fieldErrors.id_proof_number && (
+                  <div className="pw-field-error">
+                    {fieldErrors.id_proof_number}
+                  </div>
+                )}
               </div>
 
               <div className="pw-field pw-field--wide">
-                <label>Aadhar Card Number</label>
+                <label>PAN Card Number</label>
+
                 <input
                   className="pw-input"
-                  value={profileForm.aadhar_number}
-                  onChange={(e) => updateProfileField("aadhar_number", e.target.value)}
-                  placeholder={existing.profile?.aadhar_number_masked || "Enter 12-digit Aadhar number"}
+                  value={bankForm.pan_number}
+                  onChange={(event) =>
+                    updateBankField(
+                      "pan_number",
+                      event.target.value.toUpperCase()
+                    )
+                  }
+                  placeholder={
+                    existing.banking?.pan_number_masked ||
+                    "ABCDE1234F"
+                  }
                   disabled={!editMode}
                 />
-                {existing.profile?.aadhar_number_masked && (
-                  <div className="pw-field-hint">On file: {existing.profile.aadhar_number_masked} — leave blank to keep it unchanged.</div>
+
+                {existing.banking?.pan_number_masked && (
+                  <div className="pw-field-hint">
+                    On file:{" "}
+                    {existing.banking.pan_number_masked}
+                  </div>
                 )}
-                {fieldErrors.aadhar_number && <div className="pw-field-error">{fieldErrors.aadhar_number}</div>}
+
+                {fieldErrors.pan_number && (
+                  <div className="pw-field-error">
+                    {fieldErrors.pan_number}
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="pw-actions">
-              <button className="pw-btn-outline" onClick={onBack} disabled={savingStep1}>Cancel</button>
-              <button className="pw-btn-primary" onClick={goNext} disabled={savingStep1}>
-                {savingStep1 ? "Saving..." : "Save & Next"}
+              <button
+                className="pw-btn-outline"
+                onClick={onBack}
+                disabled={savingStep1}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="pw-btn-primary"
+                onClick={goNext}
+                disabled={savingStep1}
+              >
+                Save & Next
               </button>
             </div>
           </>
@@ -366,70 +842,155 @@ export default function ProfileWizard({ onBack }) {
           <>
             <div className="pw-grid">
               <div className="pw-field">
-                <label>PAN Card Number</label>
-                <input
-                  className="pw-input"
-                  value={bankForm.pan_number}
-                  onChange={(e) => updateBankField("pan_number", e.target.value.toUpperCase())}
-                  placeholder={existing.banking?.pan_number_masked || "e.g. ABCDE1234F"}
-                  disabled={!editMode}
-                />
-                {existing.banking?.pan_number_masked && (
-                  <div className="pw-field-hint">On file: {existing.banking.pan_number_masked} — leave blank to keep it unchanged.</div>
-                )}
-                {fieldErrors.pan_number && <div className="pw-field-error">{fieldErrors.pan_number}</div>}
-              </div>
-
-              <div className="pw-field">
                 <label>Account Number</label>
+
                 <input
                   className="pw-input"
                   value={bankForm.account_number}
-                  onChange={(e) => updateBankField("account_number", e.target.value)}
-                  placeholder={existing.banking?.account_number_masked || "Enter account number"}
+                  onChange={(event) =>
+                    updateBankField(
+                      "account_number",
+                      event.target.value
+                    )
+                  }
+                  placeholder={
+                    existing.banking?.account_number_masked ||
+                    "Enter account number"
+                  }
                   disabled={!editMode}
                 />
-                {existing.banking?.account_number_masked && (
-                  <div className="pw-field-hint">On file: {existing.banking.account_number_masked} — leave blank to keep it unchanged.</div>
+
+                {fieldErrors.account_number && (
+                  <div className="pw-field-error">
+                    {fieldErrors.account_number}
+                  </div>
                 )}
-                {fieldErrors.account_number && <div className="pw-field-error">{fieldErrors.account_number}</div>}
               </div>
 
               <div className="pw-field">
                 <label>Account Holder Name</label>
-                <input className="pw-input" value={bankForm.account_holder_name} onChange={(e) => updateBankField("account_holder_name", e.target.value)} disabled={!editMode} />
+
+                <input
+                  className="pw-input"
+                  value={bankForm.account_holder_name}
+                  onChange={(event) =>
+                    updateBankField(
+                      "account_holder_name",
+                      event.target.value
+                    )
+                  }
+                  disabled={!editMode}
+                />
               </div>
 
               <div className="pw-field">
                 <label>Bank Name</label>
-                <input className="pw-input" value={bankForm.bank_name} onChange={(e) => updateBankField("bank_name", e.target.value)} disabled={!editMode} />
+
+                <input
+                  className="pw-input"
+                  value={bankForm.bank_name}
+                  onChange={(event) =>
+                    updateBankField(
+                      "bank_name",
+                      event.target.value
+                    )
+                  }
+                  disabled={!editMode}
+                />
               </div>
 
               <div className="pw-field">
                 <label>Account Type</label>
-                <select className="pw-input" value={bankForm.account_type} onChange={(e) => updateBankField("account_type", e.target.value)} disabled={!editMode}>
-                  {ACCOUNT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+
+                <select
+                  className="pw-input"
+                  value={bankForm.account_type}
+                  onChange={(event) =>
+                    updateBankField(
+                      "account_type",
+                      event.target.value
+                    )
+                  }
+                  disabled={!editMode}
+                >
+                  {ACCOUNT_TYPES.map((type) => (
+                    <option
+                      key={type.value}
+                      value={type.value}
+                    >
+                      {type.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div className="pw-field">
                 <label>IFSC Code</label>
-                <input className="pw-input" value={bankForm.ifsc_code} onChange={(e) => updateBankField("ifsc_code", e.target.value.toUpperCase())} placeholder="e.g. HDFC0001234" disabled={!editMode} />
-                {fieldErrors.ifsc_code && <div className="pw-field-error">{fieldErrors.ifsc_code}</div>}
+
+                <input
+                  className="pw-input"
+                  value={bankForm.ifsc_code}
+                  onChange={(event) =>
+                    updateBankField(
+                      "ifsc_code",
+                      event.target.value.toUpperCase()
+                    )
+                  }
+                  placeholder="HDFC0001234"
+                  disabled={!editMode}
+                />
+
+                {fieldErrors.ifsc_code && (
+                  <div className="pw-field-error">
+                    {fieldErrors.ifsc_code}
+                  </div>
+                )}
               </div>
 
               <div className="pw-field pw-field--wide">
                 <label>Branch Name</label>
-                <input className="pw-input" value={bankForm.branch_name} onChange={(e) => updateBankField("branch_name", e.target.value)} disabled={!editMode} />
+
+                <input
+                  className="pw-input"
+                  value={bankForm.branch_name}
+                  onChange={(event) =>
+                    updateBankField(
+                      "branch_name",
+                      event.target.value
+                    )
+                  }
+                  disabled={!editMode}
+                />
               </div>
             </div>
 
-            <p className="pw-security-note">🔒 Your PAN and account number are encrypted before being stored and are never shown in full again.</p>
+            <p className="pw-security-note">
+              🔒 Your sensitive information is handled by the
+              secure backend.
+            </p>
 
             <div className="pw-actions">
-              <button className="pw-btn-outline" onClick={goBack} disabled={saving}>Back</button>
-              <button className="pw-btn-outline" onClick={onBack} disabled={saving}>Cancel</button>
-              <button className="pw-btn-primary" onClick={handleSave} disabled={saving}>
+              <button
+                className="pw-btn-outline"
+                onClick={goBack}
+                disabled={saving}
+              >
+                Back
+              </button>
+
+              <button
+                className="pw-btn-outline"
+                onClick={onBack}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="pw-btn-primary"
+                onClick={handleSave}
+                disabled={saving || !editMode}
+              >
                 {saving ? "Saving..." : "Save Changes"}
               </button>
             </div>
