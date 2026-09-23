@@ -274,6 +274,44 @@
 .pw-btn-outline:hover:not(:disabled) { background: var(--blush-100, #fdeef4); }
 .pw-btn-outline:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.pw-doc-preview-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line, #ece4e7);
+}
+
+.pw-doc-preview-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink, #1c1017);
+  margin-bottom: 12px;
+}
+
+.pw-doc-preview-row {
+  display: flex;
+  gap: 20px;
+}
+
+.pw-doc-preview-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.pw-doc-preview-item img {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line, #ece4e7);
+}
+
+.pw-doc-preview-item span {
+  font-size: 0.76rem;
+  color: var(--muted, #7c6b73);
+}
+
 @media (max-width: 640px) {
   .pw-page { padding: 20px; }
   .pw-grid { grid-template-columns: 1fr; }

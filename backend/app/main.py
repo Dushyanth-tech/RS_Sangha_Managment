@@ -1,6 +1,7 @@
 from app.crypto import encrypt_value, decrypt_value, mask_last4, encrypt_bytes, decrypt_bytes, hash_value
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import Response
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload,SanghaUpdate, ProfileWizardUpdate, NotificationCreate, ClearNotificationsRequest
 from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus, BankDetails, Notification, NotificationRecipient
@@ -26,6 +27,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 UPLOAD_DIR = "uploads/profile_photos"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -116,8 +119,13 @@ def register_user(user: NewUser, db = Depends(get_db)):
     return {"message": "User registered successfully", "user_id": new_user.id}
 
 @app.post("/auth/login")
-def login_user(user: LoginUser, db=Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
+def login_user(
+    user: OAuth2PasswordRequestForm = Depends(),
+    db=Depends(get_db)
+):
+    db_user = db.query(User).filter(
+        User.email == user.username
+    ).first()
 
     if not db_user:
         raise HTTPException(
@@ -130,7 +138,7 @@ def login_user(user: LoginUser, db=Depends(get_db)):
             status_code=400,
             detail="Invalid email or password"
         )
-    
+
     access_token = create_access_token({
         "sub": str(db_user.id),
         "email": db_user.email,
@@ -148,7 +156,6 @@ def login_user(user: LoginUser, db=Depends(get_db)):
             "role": db_user.role
         }
     }
-
 
 @app.post("/sanghas")
 def create_sangha(
@@ -1171,8 +1178,9 @@ def delete_sangha(
 
     return {"detail": "Sangha deleted", "demoted_user_ids": demoted}
 
+
 @app.post("/me/photo")
-def upload_profile_photo(
+async def upload_profile_photo(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user_id=Depends(get_current_user),
@@ -1181,20 +1189,14 @@ def upload_profile_photo(
     if not user:
         raise HTTPException(status_code=401, detail="User not found.")
 
-    if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(400, "Only JPEG, PNG, or WEBP images are allowed.")
 
-    ext = file.filename.rsplit(".", 1)[-1]
-    filename = f"{user.id}_{uuid.uuid4().hex}.{ext}"
-    path = os.path.join(UPLOAD_DIR, filename)
-
-    with open(path, "wb") as f:
-        f.write(file.file.read())
-
-    user.profile_photo_url = f"/{path}"
+    user.profile_photo_image = await file.read()
+    user.profile_photo_content_type = file.content_type
     db.commit()
 
-    return {"profile_photo_url": user.profile_photo_url}
+    return {"detail": "Profile photo uploaded."}
 
 
 @app.get("/me/profile-wizard")
@@ -1214,7 +1216,9 @@ def get_profile_wizard(db: Session = Depends(get_db), current_user_id=Depends(ge
             "address": user.address,
             "id_proof_type": user.id_proof_type,
             "id_proof_number_masked": mask_last4(decrypt_value(user.id_proof_number_enc)) if user.id_proof_number_enc else None,
-            "profile_photo_url": user.profile_photo_url,
+            "has_profile_photo": bool(user.profile_photo_image),
+            "has_pan_image": bool(user.pan_image_enc),
+            "has_id_proof_image": bool(user.id_proof_image_enc),
         },
         "banking": {
             "pan_number_masked": mask_last4(decrypt_value(user.pan_number_enc)) if user.pan_number_enc else None,
@@ -1227,8 +1231,6 @@ def get_profile_wizard(db: Session = Depends(get_db), current_user_id=Depends(ge
         },
     }
 
-
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 @app.patch("/me/complete-profile")   # was @app.post(...)
 async def complete_profile(
@@ -1429,6 +1431,22 @@ def _serialize(db: Session, n: Notification) -> dict:
         "message": n.message,
         "path": json.loads(n.navigation_path) if n.navigation_path else [],
     }
+
+@app.get("/me/photo")
+def get_my_photo(db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
+    user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not user or not user.profile_photo_image:
+        raise HTTPException(404, "No profile photo on file.")
+    return Response(content=user.profile_photo_image, media_type=user.profile_photo_content_type or "image/jpeg")
+
+
+@app.get("/superadmin/members/{member_id}/photo")
+def get_member_photo(member_id: int, db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
+    _require_superadmin(db, current_user_id)
+    user = db.query(User).filter(User.id == member_id).first()
+    if not user or not user.profile_photo_image:
+        raise HTTPException(404, "No profile photo on file.")
+    return Response(content=user.profile_photo_image, media_type=user.profile_photo_content_type or "image/jpeg")
 
 @app.get("/me/pan-image")
 def get_my_pan_image(db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):

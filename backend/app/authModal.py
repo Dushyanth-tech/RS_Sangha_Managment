@@ -52,7 +52,8 @@ class User(Base):
     isActive: Mapped[bool] = mapped_column(Boolean, default=True)
 
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
-    profile_photo_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    profile_photo_image: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    profile_photo_content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # ---- ID Proof: Aadhaar or Passport ----
     id_proof_type: Mapped[str | None] = mapped_column(String(20), nullable=True)

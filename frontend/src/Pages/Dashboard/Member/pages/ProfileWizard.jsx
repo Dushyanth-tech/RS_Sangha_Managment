@@ -1,10 +1,12 @@
-
 import React, { useEffect, useRef, useState } from "react";
 import {
   getProfileWizard,
   uploadProfilePhoto,
   saveProfileWizard,
   getErrorMessage,
+  getMyPhoto,
+  getMyPanImage,
+  getMyIdProofImage,
 } from "../api/profileApi";
 import DocumentScan from "./DocumentScan";
 import "./ProfileWizard.css";
@@ -33,6 +35,8 @@ export default function ProfileWizard({ onBack }) {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState("");
   const fileInputRef = useRef(null);
+  const [panPreviewUrl, setPanPreviewUrl] = useState(null);
+  const [idProofPreviewUrl, setIdProofPreviewUrl] = useState(null);
 
   const [profileForm, setProfileForm] = useState({
     fullname: "",
@@ -82,9 +86,7 @@ export default function ProfileWizard({ onBack }) {
         const { profile, banking } = res.data;
 
         setExisting({ profile, banking });
-
         setEmail(profile?.email || "");
-        setPhotoUrl(profile?.profile_photo_url || null);
 
         setProfileForm({
           fullname: profile?.fullname || "",
@@ -97,14 +99,49 @@ export default function ProfileWizard({ onBack }) {
         if (banking) {
           setBankForm((previous) => ({
             ...previous,
-            account_holder_name:
-              banking.account_holder_name || "",
+            account_holder_name: banking.account_holder_name || "",
             bank_name: banking.bank_name || "",
             account_type: banking.account_type || "savings",
             ifsc_code: banking.ifsc_code || "",
             branch_name: banking.branch_name || "",
           }));
         }
+
+        // Fetch existing images automatically — all three follow the same
+        // authenticated-blob pattern, since none of them can use a plain <img src>.
+        if (profile?.has_profile_photo) {
+          try {
+            const photoRes = await getMyPhoto();
+            setPhotoUrl(URL.createObjectURL(photoRes.data));
+          } catch {
+            // no photo yet, or fetch failed — leave initials showing
+          }
+        }
+
+        if (profile?.has_pan_image) {
+  try {
+    const panRes = await getMyPanImage();
+    const url = URL.createObjectURL(panRes.data);
+
+    setPanPreviewUrl(url);
+  } catch (error) {
+    console.error("PAN FULL ERROR:", error);
+    console.error("PAN MESSAGE:", error.message);
+  }
+}
+
+if (profile?.has_id_proof_image) {
+  try {
+    const idRes = await getMyIdProofImage();
+
+    const url = URL.createObjectURL(idRes.data);
+
+    setIdProofPreviewUrl(url);
+  } catch (error) {
+    console.error("ID FULL ERROR:", error);
+    console.error("ID MESSAGE:", error.message);
+  }
+}
       } catch (error) {
         setLoadError(getErrorMessage(error));
       } finally {
@@ -113,6 +150,14 @@ export default function ProfileWizard({ onBack }) {
     };
 
     loadProfile();
+
+    // Clean up object URLs when the component unmounts, to avoid leaking memory
+    return () => {
+      if (photoUrl) URL.revokeObjectURL(photoUrl);
+      if (panPreviewUrl) URL.revokeObjectURL(panPreviewUrl);
+      if (idProofPreviewUrl) URL.revokeObjectURL(idProofPreviewUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --------------------------------------------------
@@ -153,19 +198,11 @@ export default function ProfileWizard({ onBack }) {
 
   const handlePhotoChange = async (event) => {
     const file = event.target.files?.[0];
-
     if (!file) return;
 
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ];
-
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
-      setPhotoError(
-        "Please choose a JPEG, PNG, or WEBP image."
-      );
+      setPhotoError("Please choose a JPEG, PNG, or WEBP image.");
       return;
     }
 
@@ -173,9 +210,9 @@ export default function ProfileWizard({ onBack }) {
       setPhotoUploading(true);
       setPhotoError("");
 
-      const response = await uploadProfilePhoto(file);
-
-      setPhotoUrl(response.data.profile_photo_url);
+      await uploadProfilePhoto(file);
+      const photoRes = await getMyPhoto();
+      setPhotoUrl(URL.createObjectURL(photoRes.data));
     } catch (error) {
       setPhotoError(getErrorMessage(error));
     } finally {
@@ -194,11 +231,7 @@ export default function ProfileWizard({ onBack }) {
     }
   };
 
-  const handleIdExtracted = ({
-    idNumber,
-    idProofType: detectedType,
-    dob,
-  }) => {
+  const handleIdExtracted = ({ idNumber, idProofType: detectedType, dob }) => {
     if (idNumber) {
       updateProfileField("id_proof_number", idNumber);
     }
@@ -247,22 +280,14 @@ export default function ProfileWizard({ onBack }) {
       errors.address = "Address is required.";
     }
 
-    const hasExistingId =
-      existing.profile?.id_proof_number_masked;
+    const hasExistingId = existing.profile?.id_proof_number_masked;
 
-    if (
-      !profileForm.id_proof_number.trim() &&
-      !hasExistingId
-    ) {
+    if (!profileForm.id_proof_number.trim() && !hasExistingId) {
       errors.id_proof_number = "ID proof number is required.";
     }
 
-    if (
-      profileForm.id_proof_number.trim() &&
-      !idProofType
-    ) {
-      errors.id_proof_type =
-        "Please select Aadhaar or Passport.";
+    if (profileForm.id_proof_number.trim() && !idProofType) {
+      errors.id_proof_type = "Please select Aadhaar or Passport.";
     }
 
     return errors;
@@ -301,39 +326,24 @@ export default function ProfileWizard({ onBack }) {
 
     // Profile fields
     if (profileForm.fullname.trim()) {
-      formData.append(
-        "fullname",
-        profileForm.fullname.trim()
-      );
+      formData.append("fullname", profileForm.fullname.trim());
     }
 
     if (profileForm.date_of_birth) {
-      formData.append(
-        "date_of_birth",
-        profileForm.date_of_birth
-      );
+      formData.append("date_of_birth", profileForm.date_of_birth);
     }
 
     if (profileForm.phone.trim()) {
-      formData.append(
-        "phone",
-        profileForm.phone.trim()
-      );
+      formData.append("phone", profileForm.phone.trim());
     }
 
     if (profileForm.address.trim()) {
-      formData.append(
-        "address",
-        profileForm.address.trim()
-      );
+      formData.append("address", profileForm.address.trim());
     }
 
     // ID proof details
     if (profileForm.id_proof_number.trim()) {
-      formData.append(
-        "id_proof_number",
-        profileForm.id_proof_number.trim()
-      );
+      formData.append("id_proof_number", profileForm.id_proof_number.trim());
     }
 
     if (idProofType) {
@@ -346,10 +356,7 @@ export default function ProfileWizard({ onBack }) {
 
     // PAN details
     if (bankForm.pan_number.trim()) {
-      formData.append(
-        "pan_number",
-        bankForm.pan_number.trim().toUpperCase()
-      );
+      formData.append("pan_number", bankForm.pan_number.trim().toUpperCase());
     }
 
     if (panFile) {
@@ -358,45 +365,30 @@ export default function ProfileWizard({ onBack }) {
 
     // Banking details
     if (bankForm.account_number.trim()) {
-      formData.append(
-        "account_number",
-        bankForm.account_number.trim()
-      );
+      formData.append("account_number", bankForm.account_number.trim());
     }
 
     if (bankForm.account_holder_name.trim()) {
       formData.append(
         "account_holder_name",
-        bankForm.account_holder_name.trim()
+        bankForm.account_holder_name.trim(),
       );
     }
 
     if (bankForm.bank_name.trim()) {
-      formData.append(
-        "bank_name",
-        bankForm.bank_name.trim()
-      );
+      formData.append("bank_name", bankForm.bank_name.trim());
     }
 
     if (bankForm.account_type) {
-      formData.append(
-        "account_type",
-        bankForm.account_type
-      );
+      formData.append("account_type", bankForm.account_type);
     }
 
     if (bankForm.ifsc_code.trim()) {
-      formData.append(
-        "ifsc_code",
-        bankForm.ifsc_code.trim().toUpperCase()
-      );
+      formData.append("ifsc_code", bankForm.ifsc_code.trim().toUpperCase());
     }
 
     if (bankForm.branch_name.trim()) {
-      formData.append(
-        "branch_name",
-        bankForm.branch_name.trim()
-      );
+      formData.append("branch_name", bankForm.branch_name.trim());
     }
 
     return formData;
@@ -441,9 +433,7 @@ export default function ProfileWizard({ onBack }) {
           setFieldErrors(errors);
           setFormError("Please fix the highlighted fields.");
         } else {
-          setFormError(
-            detail || "Some information is invalid."
-          );
+          setFormError(detail || "Some information is invalid.");
         }
       } else {
         setFormError(getErrorMessage(error));
@@ -457,9 +447,7 @@ export default function ProfileWizard({ onBack }) {
   // INITIALS
   // --------------------------------------------------
 
-  const initials = (
-    profileForm.fullname || "M"
-  )
+  const initials = (profileForm.fullname || "M")
     .split(" ")
     .map((word) => word[0])
     .join("")
@@ -473,9 +461,7 @@ export default function ProfileWizard({ onBack }) {
   if (loading) {
     return (
       <div className="pw-page">
-        <div className="pw-loading">
-          Loading your profile...
-        </div>
+        <div className="pw-loading">Loading your profile...</div>
       </div>
     );
   }
@@ -487,9 +473,7 @@ export default function ProfileWizard({ onBack }) {
   return (
     <div className="pw-page">
       <div className="pw-header-row">
-        <h1 className="pw-title">
-          Complete Your Profile
-        </h1>
+        <h1 className="pw-title">Complete Your Profile</h1>
 
         <button
           type="button"
@@ -508,23 +492,15 @@ export default function ProfileWizard({ onBack }) {
             <div className="pw-progress__step">
               <div
                 className={`pw-progress__circle ${
-                  index < step
-                    ? "pw-progress__circle--done"
-                    : ""
-                } ${
-                  index === step
-                    ? "pw-progress__circle--active"
-                    : ""
-                }`}
+                  index < step ? "pw-progress__circle--done" : ""
+                } ${index === step ? "pw-progress__circle--active" : ""}`}
               >
                 {index < step ? "✓" : index + 1}
               </div>
 
               <div
                 className={`pw-progress__label ${
-                  index === step
-                    ? "pw-progress__label--active"
-                    : ""
+                  index === step ? "pw-progress__label--active" : ""
                 }`}
               >
                 {item.label}
@@ -534,9 +510,7 @@ export default function ProfileWizard({ onBack }) {
             {index < STEPS.length - 1 && (
               <div
                 className={`pw-progress__line ${
-                  index < step
-                    ? "pw-progress__line--done"
-                    : ""
+                  index < step ? "pw-progress__line--done" : ""
                 }`}
               />
             )}
@@ -544,17 +518,9 @@ export default function ProfileWizard({ onBack }) {
         ))}
       </div>
 
-      {loadError && (
-        <div className="pw-error-banner">
-          {loadError}
-        </div>
-      )}
+      {loadError && <div className="pw-error-banner">{loadError}</div>}
 
-      {formError && (
-        <div className="pw-error-banner">
-          {formError}
-        </div>
-      )}
+      {formError && <div className="pw-error-banner">{formError}</div>}
 
       {success && (
         <div className="pw-success-banner">
@@ -573,14 +539,9 @@ export default function ProfileWizard({ onBack }) {
                 type="button"
               >
                 {photoUrl ? (
-                  <img
-                    src={`http://localhost:8000${photoUrl}`}
-                    alt="Profile"
-                  />
+                  <img src={photoUrl} alt="Profile" />
                 ) : (
-                  <span className="pw-photo__initials">
-                    {initials}
-                  </span>
+                  <span className="pw-photo__initials">{initials}</span>
                 )}
 
                 <span className="pw-photo__edit">
@@ -597,18 +558,14 @@ export default function ProfileWizard({ onBack }) {
               />
 
               <div>
-                <div className="pw-photo__label">
-                  Profile Photo
-                </div>
+                <div className="pw-photo__label">Profile Photo</div>
 
                 <div className="pw-photo__hint">
                   Click the circle to upload a profile photo.
                 </div>
 
                 {photoError && (
-                  <div className="pw-field-error">
-                    {photoError}
-                  </div>
+                  <div className="pw-field-error">{photoError}</div>
                 )}
               </div>
             </div>
@@ -630,18 +587,13 @@ export default function ProfileWizard({ onBack }) {
                   className="pw-input"
                   value={profileForm.fullname}
                   onChange={(event) =>
-                    updateProfileField(
-                      "fullname",
-                      event.target.value
-                    )
+                    updateProfileField("fullname", event.target.value)
                   }
                   disabled={!editMode}
                 />
 
                 {fieldErrors.fullname && (
-                  <div className="pw-field-error">
-                    {fieldErrors.fullname}
-                  </div>
+                  <div className="pw-field-error">{fieldErrors.fullname}</div>
                 )}
               </div>
 
@@ -653,10 +605,7 @@ export default function ProfileWizard({ onBack }) {
                   className="pw-input"
                   value={profileForm.date_of_birth}
                   onChange={(event) =>
-                    updateProfileField(
-                      "date_of_birth",
-                      event.target.value
-                    )
+                    updateProfileField("date_of_birth", event.target.value)
                   }
                   disabled={!editMode}
                 />
@@ -671,11 +620,7 @@ export default function ProfileWizard({ onBack }) {
               <div className="pw-field">
                 <label>Email</label>
 
-                <input
-                  className="pw-input"
-                  value={email}
-                  disabled
-                />
+                <input className="pw-input" value={email} disabled />
               </div>
 
               <div className="pw-field">
@@ -685,18 +630,13 @@ export default function ProfileWizard({ onBack }) {
                   className="pw-input"
                   value={profileForm.phone}
                   onChange={(event) =>
-                    updateProfileField(
-                      "phone",
-                      event.target.value
-                    )
+                    updateProfileField("phone", event.target.value)
                   }
                   disabled={!editMode}
                 />
 
                 {fieldErrors.phone && (
-                  <div className="pw-field-error">
-                    {fieldErrors.phone}
-                  </div>
+                  <div className="pw-field-error">{fieldErrors.phone}</div>
                 )}
               </div>
 
@@ -707,18 +647,13 @@ export default function ProfileWizard({ onBack }) {
                   className="pw-input"
                   value={profileForm.address}
                   onChange={(event) =>
-                    updateProfileField(
-                      "address",
-                      event.target.value
-                    )
+                    updateProfileField("address", event.target.value)
                   }
                   disabled={!editMode}
                 />
 
                 {fieldErrors.address && (
-                  <div className="pw-field-error">
-                    {fieldErrors.address}
-                  </div>
+                  <div className="pw-field-error">{fieldErrors.address}</div>
                 )}
               </div>
 
@@ -728,20 +663,12 @@ export default function ProfileWizard({ onBack }) {
                 <select
                   className="pw-input"
                   value={idProofType}
-                  onChange={(event) =>
-                    setIdProofType(event.target.value)
-                  }
+                  onChange={(event) => setIdProofType(event.target.value)}
                   disabled={!editMode}
                 >
-                  <option value="">
-                    Select ID proof
-                  </option>
-                  <option value="aadhaar">
-                    Aadhaar
-                  </option>
-                  <option value="passport">
-                    Passport
-                  </option>
+                  <option value="">Select ID proof</option>
+                  <option value="aadhaar">Aadhaar</option>
+                  <option value="passport">Passport</option>
                 </select>
 
                 {fieldErrors.id_proof_type && (
@@ -760,7 +687,7 @@ export default function ProfileWizard({ onBack }) {
                   onChange={(event) =>
                     updateProfileField(
                       "id_proof_number",
-                      event.target.value.toUpperCase()
+                      event.target.value.toUpperCase(),
                     )
                   }
                   placeholder={
@@ -772,8 +699,7 @@ export default function ProfileWizard({ onBack }) {
 
                 {existing.profile?.id_proof_number_masked && (
                   <div className="pw-field-hint">
-                    On file:{" "}
-                    {existing.profile.id_proof_number_masked}
+                    On file: {existing.profile.id_proof_number_masked}
                   </div>
                 )}
 
@@ -793,30 +719,52 @@ export default function ProfileWizard({ onBack }) {
                   onChange={(event) =>
                     updateBankField(
                       "pan_number",
-                      event.target.value.toUpperCase()
+                      event.target.value.toUpperCase(),
                     )
                   }
                   placeholder={
-                    existing.banking?.pan_number_masked ||
-                    "ABCDE1234F"
+                    existing.banking?.pan_number_masked || "ABCDE1234F"
                   }
                   disabled={!editMode}
                 />
 
                 {existing.banking?.pan_number_masked && (
                   <div className="pw-field-hint">
-                    On file:{" "}
-                    {existing.banking.pan_number_masked}
+                    On file: {existing.banking.pan_number_masked}
                   </div>
                 )}
 
                 {fieldErrors.pan_number && (
-                  <div className="pw-field-error">
-                    {fieldErrors.pan_number}
-                  </div>
+                  <div className="pw-field-error">{fieldErrors.pan_number}</div>
                 )}
               </div>
             </div>
+
+            {(panPreviewUrl || idProofPreviewUrl) && (
+              <div className="pw-doc-preview-section">
+                <div className="pw-doc-preview-title">Uploaded Documents</div>
+
+                <div className="pw-doc-preview-row">
+                  {panPreviewUrl && (
+                    <div className="pw-doc-preview-item">
+                      <img src={panPreviewUrl} alt="PAN card on file" />
+                      <span>PAN Card</span>
+                    </div>
+                  )}
+
+                  {idProofPreviewUrl && (
+                    <div className="pw-doc-preview-item">
+                      <img src={idProofPreviewUrl} alt="ID proof on file" />
+                      <span>
+                        {idProofType === "passport"
+                          ? "Passport"
+                          : "Aadhaar Card"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="pw-actions">
               <button
@@ -848,10 +796,7 @@ export default function ProfileWizard({ onBack }) {
                   className="pw-input"
                   value={bankForm.account_number}
                   onChange={(event) =>
-                    updateBankField(
-                      "account_number",
-                      event.target.value
-                    )
+                    updateBankField("account_number", event.target.value)
                   }
                   placeholder={
                     existing.banking?.account_number_masked ||
@@ -874,10 +819,7 @@ export default function ProfileWizard({ onBack }) {
                   className="pw-input"
                   value={bankForm.account_holder_name}
                   onChange={(event) =>
-                    updateBankField(
-                      "account_holder_name",
-                      event.target.value
-                    )
+                    updateBankField("account_holder_name", event.target.value)
                   }
                   disabled={!editMode}
                 />
@@ -890,10 +832,7 @@ export default function ProfileWizard({ onBack }) {
                   className="pw-input"
                   value={bankForm.bank_name}
                   onChange={(event) =>
-                    updateBankField(
-                      "bank_name",
-                      event.target.value
-                    )
+                    updateBankField("bank_name", event.target.value)
                   }
                   disabled={!editMode}
                 />
@@ -906,18 +845,12 @@ export default function ProfileWizard({ onBack }) {
                   className="pw-input"
                   value={bankForm.account_type}
                   onChange={(event) =>
-                    updateBankField(
-                      "account_type",
-                      event.target.value
-                    )
+                    updateBankField("account_type", event.target.value)
                   }
                   disabled={!editMode}
                 >
                   {ACCOUNT_TYPES.map((type) => (
-                    <option
-                      key={type.value}
-                      value={type.value}
-                    >
+                    <option key={type.value} value={type.value}>
                       {type.label}
                     </option>
                   ))}
@@ -933,7 +866,7 @@ export default function ProfileWizard({ onBack }) {
                   onChange={(event) =>
                     updateBankField(
                       "ifsc_code",
-                      event.target.value.toUpperCase()
+                      event.target.value.toUpperCase(),
                     )
                   }
                   placeholder="HDFC0001234"
@@ -941,9 +874,7 @@ export default function ProfileWizard({ onBack }) {
                 />
 
                 {fieldErrors.ifsc_code && (
-                  <div className="pw-field-error">
-                    {fieldErrors.ifsc_code}
-                  </div>
+                  <div className="pw-field-error">{fieldErrors.ifsc_code}</div>
                 )}
               </div>
 
@@ -954,10 +885,7 @@ export default function ProfileWizard({ onBack }) {
                   className="pw-input"
                   value={bankForm.branch_name}
                   onChange={(event) =>
-                    updateBankField(
-                      "branch_name",
-                      event.target.value
-                    )
+                    updateBankField("branch_name", event.target.value)
                   }
                   disabled={!editMode}
                 />
@@ -965,8 +893,7 @@ export default function ProfileWizard({ onBack }) {
             </div>
 
             <p className="pw-security-note">
-              🔒 Your sensitive information is handled by the
-              secure backend.
+              🔒 Your sensitive information is handled by the secure backend.
             </p>
 
             <div className="pw-actions">

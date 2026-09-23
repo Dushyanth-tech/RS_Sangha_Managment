@@ -18,3 +18,12 @@ export const getErrorMessage = (error) => {
   if (!error?.response) return "Network error — please check your connection and try again.";
   return error.response.data?.detail || "Something went wrong. Please try again.";
 };
+
+export const getMyPhoto = () =>
+  api.get(`/me/photo`, { responseType: "blob" });
+
+export const getMyPanImage = () =>
+  api.get(`/me/pan-image`, { responseType: "blob" });
+
+export const getMyIdProofImage = () =>
+  api.get(`/me/id-proof-image`, { responseType: "blob" });
