@@ -1,29 +1,115 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap");
 
-/* ============================================
-   Same design tokens as AuthPage.css — keep in
-   sync if the login page theme ever changes.
-   ============================================ */
+/* ============================================================
+   RS SANGHA — SUPER ADMIN DASHBOARD
+   Light • Clean • Professional
+   Primary: Soft Indigo
+   Secondary: Warm Gold
+   ============================================================ */
+
 :root {
-  --pink-900: #4a0e2e;
-  --pink-700: #8a1245;   /*primary dark pink */
-  --pink-600: #a8194f;
-  --pink-500: #c62368;
-  --blush-100: #fdeef4;
-  --blush-50: #fbf9f7;
-  --ink: #1c1017;
-  --muted: #7c6b73;
-  --line: #ece4e7;
+  /* ==========================================================
+     PRIMARY — SOFT INDIGO
+     ========================================================== */
+
+  --pink-900: #373276;
+  --pink-700: #4f46a5;
+  --pink-600: #6259b8;
+  --pink-500: #7b73c8;
+
+  /* ==========================================================
+     LIGHT INDIGO BACKGROUNDS
+     ========================================================== */
+
+  --blush-100: #eef0ff;
+  --blush-50: #f8f8fc;
+
+  /* ==========================================================
+     SECONDARY — WARM GOLD
+     ========================================================== */
+
+  --gold-600: #b27d2f;
+  --gold-500: #c6923e;
+  --gold-300: #e2bd7a;
+  --gold-050: #fff8ea;
+
+  /* ==========================================================
+     NEUTRAL COLORS
+     ========================================================== */
+
+  --ink: #25273a;
+  --muted: #6f7285;
+  --muted-light: #9498aa;
+
+  --line: #e7e8ef;
+  --line-light: #f0f1f5;
+
   --white: #ffffff;
-  --error: #d1264a;
-  --success: #1e8a5f;
-  --warning: #b8860b;
-  --radius-lg: 18px;
+
+  /* ==========================================================
+     STATUS COLORS
+     ========================================================== */
+
+  --error: #c43d4b;
+  --success: #23804b;
+  --warning: #a86d16;
+
+  /* ==========================================================
+     DESIGN SYSTEM
+     ========================================================== */
+
+  --radius-lg: 16px;
   --radius-md: 10px;
-  --shadow-card: 0 20px 50px -22px rgba(74, 14, 46, 0.28);
-  --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: "Fraunces", Georgia, serif;
+  --radius-sm: 7px;
+
+  --shadow-card:
+    0 8px 24px rgba(38, 40, 65, 0.06);
+
+  --shadow-hover:
+    0 10px 28px rgba(38, 40, 65, 0.09);
+
+  --font-body:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  --font-display:
+    "Fraunces",
+    Georgia,
+    serif;
 }
+
+
+/* ============================================================
+   GLOBAL
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--pink-600);
+  outline-offset: 2px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background: var(--blush-50);
+  color: var(--ink);
+}
+
+
+/* ============================================================
+   MAIN SHELL
+   ============================================================ */
 
 .sa-shell {
   display: flex;
@@ -33,366 +119,919 @@
   color: var(--ink);
 }
 
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+
 .sa-sidebar {
   width: 260px;
   min-width: 260px;
+
   position: sticky;
   top: 0;
-  padding: 24px 16px;
+
+  height: 100vh;
+
+  padding: 22px 14px;
+
   display: flex;
   flex-direction: column;
+
   flex-shrink: 0;
-  background: linear-gradient(160deg, var(--pink-600) 0%, var(--pink-700) 55%, var(--pink-900) 100%);
-  color: #fdf1f6;
-  transition: width 0.2s ease, min-width 0.2s ease;
+
+  background: var(--white);
+
+  color: var(--ink);
+
+  border-right: 1px solid var(--line);
+
+  box-shadow:
+    4px 0 18px rgba(40, 42, 70, 0.035);
+
+  transition:
+    width 0.2s ease,
+    min-width 0.2s ease,
+    box-shadow 0.2s ease;
 }
+
+
+/* ============================================================
+   COLLAPSED SIDEBAR
+   ============================================================ */
 
 .sa-sidebar--collapsed {
   width: 84px;
   min-width: 84px;
-  padding: 24px 10px;
+
+  padding: 22px 10px;
 }
+
+
+/* ============================================================
+   SIDEBAR BRAND
+   ============================================================ */
 
 .sa-sidebar__brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 6px 20px;
-  border-bottom: 1px solid rgba(253, 241, 246, 0.22);
+
+  gap: 11px;
+
+  padding: 0 8px 20px;
+
+  border-bottom: 1px solid var(--line-light);
+
   margin-bottom: 18px;
 }
 
+
+/* ============================================================
+   RS LOGO
+   ============================================================ */
+
 .sa-sidebar__mark {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
+
   display: grid;
   place-items: center;
-  border-radius: 9px;
-  background: linear-gradient(135deg, var(--pink-500), var(--pink-700));
-  color: #fff;
+
+  border-radius: 10px;
+
+  background: var(--gold-500);
+
+  color: #ffffff;
+
   font-family: var(--font-display);
+
   font-weight: 700;
-  font-size: 16px;
+  font-size: 17px;
+
   flex-shrink: 0;
+
+  box-shadow:
+    0 4px 10px rgba(198, 146, 62, 0.18);
 }
+
+
+/* ============================================================
+   BRAND TEXT
+   ============================================================ */
 
 .sa-sidebar__brand-text {
   font-family: var(--font-display);
+
   font-weight: 700;
-  font-size: 17px;
+
+  font-size: 18px;
+
   white-space: nowrap;
+
+  color: var(--pink-900);
 }
+
+
+/* ============================================================
+   SIDEBAR NAVIGATION
+   ============================================================ */
 
 .sa-sidebar__nav {
   display: flex;
+
   flex-direction: column;
+
   gap: 4px;
+
   flex: 1;
 }
 
+
+/* ============================================================
+   NAVIGATION LINK
+   ============================================================ */
+
 .sa-sidebar__link {
+  position: relative;
+
   display: flex;
   align-items: center;
+
   gap: 12px;
+
+  width: 100%;
+
   background: transparent;
+
   border: none;
-  color: #edc7da;
-  padding: 11px 12px;
-  border-radius: var(--radius-md);
+
+  border-left: 3px solid transparent;
+
+  color: #686c80;
+
+  padding: 11px 11px;
+
+  border-radius:
+    0
+    var(--radius-md)
+    var(--radius-md)
+    0;
+
   font-family: inherit;
+
   font-size: 13.5px;
+
   font-weight: 600;
+
   text-align: left;
+
   white-space: nowrap;
+
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
+
+
+/* ============================================================
+   NAVIGATION HOVER
+   ============================================================ */
 
 .sa-sidebar__link:hover {
-  background: rgba(253, 241, 246, 0.12);
-  color: #fff;
-}
+  background: #f6f6fb;
 
-.sa-sidebar__link--active {
-  background: #fff;
   color: var(--pink-700);
 }
 
-.sa-sidebar__icon {
-  font-size: 16px;
-  width: 20px;
-  text-align: center;
-  flex-shrink: 0;
+
+/* ============================================================
+   ACTIVE NAVIGATION
+   ============================================================ */
+
+.sa-sidebar__link--active {
+  background: var(--blush-100);
+
+  border-left-color: var(--pink-600);
+
+  color: var(--pink-700);
+
+  font-weight: 700;
 }
+
+
+/* ============================================================
+   NAVIGATION ICON
+   ============================================================ */
+
+.sa-sidebar__icon {
+  font-size: 17px;
+
+  width: 20px;
+
+  min-width: 20px;
+
+  text-align: center;
+
+  flex-shrink: 0;
+
+  color: #85899b;
+
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+
+/* Active icon */
+
+.sa-sidebar__link--active .sa-sidebar__icon {
+  color: var(--pink-700);
+}
+
+
+/* Hover icon */
+
+.sa-sidebar__link:hover .sa-sidebar__icon {
+  color: var(--pink-600);
+}
+
+
+/* ============================================================
+   SIDEBAR FOOTER
+   ============================================================ */
 
 .sa-sidebar__footer {
-  padding-top: 14px;
-  border-top: 1px solid rgba(253, 241, 246, 0.22);
+  padding-top: 15px;
+
+  border-top: 1px solid var(--line-light);
 }
 
+
+/* ============================================================
+   ROLE BADGE
+   ============================================================ */
+
 .sa-sidebar__badge {
-  display: inline-block;
-  background: rgba(253, 241, 246, 0.15);
+  display: inline-flex;
+
+  align-items: center;
+
+  background: var(--gold-050);
+
+  color: var(--gold-600);
+
+  border: 1px solid #f0dfbd;
+
   padding: 5px 12px;
+
   border-radius: 999px;
+
   font-size: 11.5px;
+
   font-weight: 700;
+
   letter-spacing: 0.04em;
+
   text-transform: uppercase;
 }
 
-/* ================= TOPBAR ================= */
+
+/* ============================================================
+   TOPBAR
+   ============================================================ */
+
 .sa-topbar {
   height: 72px;
-  background: var(--white);
+
+  background: rgba(255, 255, 255, 0.96);
+
   border-bottom: 1px solid var(--line);
+
   display: flex;
+
   align-items: center;
+
   justify-content: space-between;
+
   padding: 0 28px;
+
   position: sticky;
+
   top: 0;
+
   z-index: 5;
+
+  backdrop-filter: blur(10px);
 }
+
+
+/* ============================================================
+   TOPBAR LEFT
+   ============================================================ */
 
 .sa-topbar__left {
   display: flex;
+
   align-items: center;
+
   gap: 16px;
+
+  min-width: 0;
 }
 
+
+/* ============================================================
+   MENU BUTTON
+   ============================================================ */
+
 .sa-topbar__menu-btn {
-  width: 38px;
-  height: 38px;
-  border: none;
+  width: 40px;
+  height: 40px;
+
+  border: 1px solid var(--line);
+
   border-radius: var(--radius-md);
+
   background: var(--blush-100);
+
   color: var(--pink-700);
-  font-size: 16px;
+
+  font-size: 17px;
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
   cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
+
+.sa-topbar__menu-btn:hover {
+  background: #e7e9ff;
+
+  border-color: #d9dcfa;
+
+  transform: translateY(-1px);
+}
+
+
+/* ============================================================
+   TOPBAR TITLE
+   ============================================================ */
 
 .sa-topbar__title {
   font-family: var(--font-display);
+
   font-weight: 700;
-  font-size: 22px;
+
+  font-size: 23px;
+
   margin: 0;
-  color: var(--ink);
+
+  color: var(--pink-900);
+
+  white-space: nowrap;
 }
+
+
+/* ============================================================
+   TOPBAR RIGHT
+   ============================================================ */
 
 .sa-topbar__right {
   display: flex;
+
   align-items: center;
-  gap: 18px;
+
+  gap: 16px;
 }
+
+
+/* ============================================================
+   SEARCH
+   ============================================================ */
 
 .sa-topbar__search {
-  width: 260px;
-  height: 40px;
-  padding: 0 14px;
+  width: 300px;
+
+  height: 42px;
+
+  padding: 0 15px;
+
   border-radius: var(--radius-md);
-  border: 1.5px solid var(--line);
-  background: var(--blush-50);
+
+  border: 1px solid var(--line);
+
+  background: #fafafd;
+
   font-family: inherit;
+
   font-size: 13px;
+
   color: var(--ink);
+
   outline: none;
-  transition: border-color 0.15s ease;
+
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
-.sa-topbar__search::placeholder { color: #b7abb0; }
-.sa-topbar__search:focus { border-color: var(--pink-600); }
+.sa-topbar__search::placeholder {
+  color: #9a9dac;
+}
+
+.sa-topbar__search:hover {
+  border-color: #d5d7e2;
+}
+
+.sa-topbar__search:focus {
+  border-color: var(--pink-500);
+
+  background: #ffffff;
+
+  box-shadow:
+    0 0 0 3px rgba(79, 70, 165, 0.08);
+}
+
+
+/* ============================================================
+   PROFILE
+   ============================================================ */
 
 .sa-topbar__profile {
   display: flex;
+
   align-items: center;
-  gap: 9px;
+
+  gap: 10px;
 }
 
+
+/* ============================================================
+   AVATAR
+   ============================================================ */
+
 .sa-topbar__avatar {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
+
   border-radius: 50%;
+
   background: var(--blush-100);
+
   color: var(--pink-700);
+
   font-weight: 700;
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
+  border: 1px solid #e0e2fa;
 }
+
+
+/* ============================================================
+   USER NAME
+   ============================================================ */
 
 .sa-topbar__name {
   font-weight: 600;
-  font-size: 13px;
+
+  font-size: 13.5px;
+
   color: var(--ink);
+
+  white-space: nowrap;
 }
 
+
+/* ============================================================
+   LOGOUT
+   ============================================================ */
+
 .sa-topbar__logout {
-  height: 38px;
-  padding: 0 16px;
-  border: 1.5px solid var(--line);
+  height: 40px;
+
+  padding: 0 17px;
+
+  border: 1px solid var(--line);
+
   border-radius: var(--radius-md);
-  background: #fff;
+
+  background: #ffffff;
+
   color: var(--ink);
+
   font-family: inherit;
+
   font-weight: 600;
+
   font-size: 13px;
+
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
+
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .sa-topbar__logout:hover {
-  border-color: var(--pink-500);
-  background: var(--blush-100);
-  color: var(--pink-700);
+  border-color: #e1b6bb;
+
+  background: #fff7f7;
+
+  color: var(--error);
+
+  transform: translateY(-1px);
 }
 
-/* ================= CONTENT / PAGES ================= */
+
+/* ============================================================
+   MAIN CONTENT
+   ============================================================ */
+
 .sa-shell__main {
   flex: 1;
+
   min-width: 0;
+
   display: flex;
+
   flex-direction: column;
+
+  background: var(--blush-50);
 }
+
+
+/* ============================================================
+   CONTENT WRAPPER
+   ============================================================ */
 
 .sa-shell__content {
   flex: 1;
 }
 
+
+/* ============================================================
+   PAGE
+   ============================================================ */
+
 .sa-page {
-  padding: 28px;
+  padding: 30px;
+
   display: flex;
+
   flex-direction: column;
+
   gap: 28px;
+
+  max-width: 1600px;
+
+  width: 100%;
+
+  margin: 0 auto;
 }
+
+
+/* ============================================================
+   STATISTICS GRID
+   ============================================================ */
 
 .sa-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 16px;
 }
 
+
+/* ============================================================
+   RESPONSIVE STATISTICS
+   ============================================================ */
+
 @media (max-width: 1100px) {
-  .sa-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .sa-stats-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
 }
+
 @media (max-width: 600px) {
-  .sa-stats-grid { grid-template-columns: 1fr; }
+  .sa-stats-grid {
+    grid-template-columns: 1fr;
+  }
 }
+
+
+/* ============================================================
+   SECTION
+   ============================================================ */
 
 .sa-section {
   display: flex;
+
   flex-direction: column;
+
   gap: 14px;
 }
 
+
+/* ============================================================
+   SECTION HEADER
+   ============================================================ */
+
 .sa-section__header {
   display: flex;
+
   align-items: center;
+
   justify-content: space-between;
+
+  gap: 16px;
 }
+
+
+/* ============================================================
+   SECTION TITLE
+   ============================================================ */
 
 .sa-section__title {
   font-family: var(--font-display);
+
   font-weight: 700;
-  font-size: 18px;
+
+  font-size: 19px;
+
   margin: 0;
-  color: var(--ink);
+
+  color: var(--pink-900);
 }
 
-/* ================= STAT CARD ================= */
+
+/* ============================================================
+   STAT CARD
+   ============================================================ */
+
 .sa-stat-card {
   background: var(--white);
+
   border: 1px solid var(--line);
+
   border-radius: var(--radius-lg);
+
   padding: 20px 22px;
+
   display: flex;
+
   align-items: center;
+
   gap: 16px;
+
   box-shadow: var(--shadow-card);
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
 }
 
-.sa-stat-card__icon {
-  width: 46px;
-  height: 46px;
-  border-radius: var(--radius-md);
-  background: var(--blush-100);
-  color: var(--pink-700);
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.sa-stat-card:hover {
+  transform: translateY(-2px);
+
+  box-shadow: var(--shadow-hover);
+
+  border-color: #dfe1ec;
 }
+
+
+/* ============================================================
+   STAT CARD ICON
+   ============================================================ */
+
+.sa-stat-card__icon {
+  width: 44px;
+  height: 44px;
+
+  border-radius: var(--radius-md);
+
+  background: var(--gold-050);
+
+  color: var(--gold-600);
+
+  font-size: 19px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border: 1px solid #f1dfbe;
+}
+
+
+/* ============================================================
+   STAT CARD BODY
+   ============================================================ */
 
 .sa-stat-card__body {
   display: flex;
+
   flex-direction: column;
+
   gap: 2px;
+
+  min-width: 0;
 }
+
+
+/* ============================================================
+   STAT LABEL
+   ============================================================ */
 
 .sa-stat-card__label {
   font-size: 12.5px;
+
   color: var(--muted);
 }
 
+
+/* ============================================================
+   STAT VALUE
+   ============================================================ */
+
 .sa-stat-card__value {
   font-family: var(--font-display);
-  font-size: 22px;
+
+  font-size: 23px;
+
   font-weight: 700;
-  color: var(--ink);
+
+  color: var(--pink-900);
 }
+
+
+/* ============================================================
+   STAT TREND
+   ============================================================ */
 
 .sa-stat-card__trend {
   font-size: 12px;
+
   font-weight: 600;
 }
 
-.sa-stat-card__trend--up { color: var(--success); }
-.sa-stat-card__trend--down { color: var(--error); }
-
-/* ================= BUTTONS ================= */
-.sa-btn-primary {
-  height: 40px;
-  padding: 0 18px;
-  border: none;
-  border-radius: var(--radius-md);
-  background: var(--pink-600);
-  color: #fff;
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 13.5px;
-  cursor: pointer;
-  transition: background 0.15s ease;
+.sa-stat-card__trend--up {
+  color: var(--success);
 }
-.sa-btn-primary:hover { background: var(--pink-700); }
-.sa-btn-primary:active { background: var(--pink-900); }
+
+.sa-stat-card__trend--down {
+  color: var(--error);
+}
+
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.sa-btn-primary {
+  min-height: 40px;
+
+  padding: 0 18px;
+
+  border: none;
+
+  border-radius: var(--radius-md);
+
+  background: var(--pink-700);
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-weight: 700;
+
+  font-size: 13.5px;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 4px 10px rgba(79, 70, 165, 0.14);
+
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.sa-btn-primary:hover {
+  background: var(--pink-600);
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 6px 14px rgba(79, 70, 165, 0.18);
+}
+
+.sa-btn-primary:active {
+  background: var(--pink-700);
+
+  transform: translateY(0);
+}
+
+.sa-btn-primary:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+
+  box-shadow: none;
+}
+
+
+/* ============================================================
+   OUTLINE BUTTON
+   ============================================================ */
 
 .sa-btn-outline {
-  height: 36px;
-  padding: 0 14px;
-  border: 1.5px solid var(--line);
-  border-radius: var(--radius-md);
-  background: #fff;
-  color: var(--pink-700);
-  font-family: inherit;
-  font-weight: 600;
-  font-size: 12.5px;
-  cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
-}
-.sa-btn-outline:hover { border-color: var(--pink-500); background: var(--blush-100); }
+  min-height: 36px;
 
-/* ================= TABLE ================= */
+  padding: 0 14px;
+
+  border: 1px solid var(--line);
+
+  border-radius: var(--radius-md);
+
+  background: #ffffff;
+
+  color: var(--pink-700);
+
+  font-family: inherit;
+
+  font-weight: 600;
+
+  font-size: 12.5px;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.sa-btn-outline:hover {
+  border-color: #c9c7e9;
+
+  background: var(--blush-100);
+
+  color: var(--pink-700);
+}
+
+.sa-btn-outline:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+}
+
+
+/* ============================================================
+   TABLE WRAPPER
+   ============================================================ */
+
 .sa-table-wrapper {
-  background: var(--white);
+  background: #ffffff;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   overflow-x: auto;
   box-shadow: var(--shadow-card);
 }
+
+/* ============================================================
+   TABLE
+   ============================================================ */
 
 .sa-table {
   width: 100%;
@@ -400,66 +1039,390 @@
   font-size: 13px;
 }
 
+
+/* ============================================================
+   TABLE HEADER
+   ============================================================ */
+.sa-table thead {
+  background: #f5f5fa;
+}
+
+.sa-table thead tr {
+  background: #f5f5fa;
+}
+
 .sa-table thead th {
   text-align: left;
   padding: 14px 18px;
-  background: var(--blush-100);
-  color: var(--pink-700);
+  background: #f5f5fa;
+  color: var(--pink-900);
   font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
 
-.sa-table tbody td {
-  padding: 13px 18px;
+.sa-table thead th,
+.sa-table thead tr th,
+.sa-table th {
+  text-align: left;
+  padding: 14px 18px;
+  background: #f5f5fa !important;
+  color: var(--pink-900) !important;
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
   border-bottom: 1px solid var(--line);
-  color: var(--ink);
+  white-space: nowrap;
 }
 
-.sa-table tbody tr:last-child td { border-bottom: none; }
+
+/* ============================================================
+   TABLE BODY
+   ============================================================ */
+
+.sa-table tbody td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line-light);
+  color: var(--ink);
+  background: #ffffff;
+}
 
 
-/* ---------- Scrollable table (used on Sanghas pages, both dashboards) ---------- */
+/* ============================================================
+   LAST TABLE ROW
+   ============================================================ */
+
+.sa-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+
+/* ============================================================
+   TABLE ROW HOVER
+   ============================================================ */
+
+.sa-table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.sa-table tbody tr:hover td {
+  background: #fafaff;
+}
+
+
+/* ============================================================
+   SCROLLABLE TABLE
+   ============================================================ */
+
 .sa-scroll-table .sa-table-wrapper {
   max-height: 480px;
+
   overflow-y: auto;
+
   overflow-x: auto;
 }
+
+
+/* ============================================================
+   STICKY TABLE HEADER
+   ============================================================ */
 
 .sa-scroll-table .sa-table thead th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
+  background: #f5f5fa !important;
 }
 
-.sa-table tbody tr:hover { background: var(--blush-50); }
 
-.sa-table__actions-col { white-space: nowrap; }
+/* ============================================================
+   TABLE ACTIONS
+   ============================================================ */
+
+.sa-table__actions-col {
+  white-space: nowrap;
+}
+
+
+/* ============================================================
+   EMPTY TABLE
+   ============================================================ */
 
 .sa-table__empty {
   text-align: center;
-  padding: 32px;
+
+  padding: 40px 32px;
+
   color: var(--muted);
+
+  background: #ffffff;
 }
+
+
+/* ============================================================
+   BADGES
+   ============================================================ */
 
 .sa-badge {
-  display: inline-block;
-  padding: 4px 12px;
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding: 5px 12px;
+
   border-radius: 999px;
+
   font-size: 11.5px;
+
   font-weight: 700;
+
+  white-space: nowrap;
 }
 
-.sa-badge--pending { background: #fdf3d9; color: var(--warning); }
-.sa-badge--approved { background: #e3f6ee; color: var(--success); }
-.sa-badge--rejected { background: var(--blush-100); color: var(--error); }
 
-/* ================= RESPONSIVE ================= */
+/* ============================================================
+   PENDING
+   ============================================================ */
+
+.sa-badge--pending {
+  background: #fff6df;
+
+  color: #9b6718;
+
+  border: 1px solid #f1dfb9;
+}
+
+
+/* ============================================================
+   APPROVED
+   ============================================================ */
+
+.sa-badge--approved {
+  background: #eaf7ef;
+
+  color: var(--success);
+
+  border: 1px solid #ccebd9;
+}
+
+
+/* ============================================================
+   REJECTED
+   ============================================================ */
+
+.sa-badge--rejected {
+  background: #fff0f1;
+
+  color: var(--error);
+
+  border: 1px solid #f0d0d4;
+}
+
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+
+.sa-table-wrapper::-webkit-scrollbar {
+  width: 7px;
+
+  height: 7px;
+}
+
+.sa-table-wrapper::-webkit-scrollbar-track {
+  background: #f5f5f8;
+}
+
+.sa-table-wrapper::-webkit-scrollbar-thumb {
+  background: #cfd1dc;
+
+  border-radius: 10px;
+}
+
+.sa-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #b5b8c7;
+}
+
+
+/* ============================================================
+   RESPONSIVE — TOPBAR
+   ============================================================ */
+
+@media (max-width: 1100px) {
+  .sa-topbar__search {
+    width: 230px;
+  }
+
+  .sa-topbar__right {
+    gap: 12px;
+  }
+}
+
+
+/* ============================================================
+   RESPONSIVE — TABLET
+   ============================================================ */
+
 @media (max-width: 900px) {
-  .sa-topbar__search { display: none; }
+  .sa-topbar__search {
+    display: none;
+  }
+
+  .sa-page {
+    padding: 24px;
+  }
+
+  .sa-sidebar {
+    width: 230px;
+
+    min-width: 230px;
+  }
 }
+
+
+/* ============================================================
+   RESPONSIVE — MOBILE
+   ============================================================ */
 
 @media (max-width: 640px) {
-  .sa-sidebar { position: fixed; z-index: 20; }
-  .sa-page { padding: 18px; }
+  .sa-sidebar {
+    position: fixed;
+
+    left: 0;
+    top: 0;
+
+    height: 100vh;
+
+    z-index: 20;
+
+    box-shadow:
+      8px 0 24px rgba(30, 32, 55, 0.12);
+  }
+
+  .sa-page {
+    padding: 18px;
+
+    gap: 22px;
+  }
+
+  .sa-topbar {
+    height: 64px;
+
+    padding: 0 16px;
+  }
+
+  .sa-topbar__title {
+    font-size: 19px;
+  }
+
+  .sa-topbar__name {
+    display: none;
+  }
+
+  .sa-topbar__logout {
+    padding: 0 12px;
+  }
+
+  .sa-section__header {
+    align-items: flex-start;
+
+    flex-direction: column;
+  }
+
+  .sa-table-wrapper {
+    border-radius: 12px;
+  }
+}
+
+
+/* ============================================================
+   VERY SMALL MOBILE
+   ============================================================ */
+
+@media (max-width: 420px) {
+  .sa-topbar__right {
+    gap: 8px;
+  }
+
+  .sa-topbar__avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .sa-topbar__logout {
+    height: 36px;
+
+    font-size: 12px;
+  }
+
+  .sa-page {
+    padding: 14px;
+  }
+
+  .sa-stat-card {
+    padding: 16px;
+  }
+}
+
+
+/* ============================================================
+   COLLAPSED SIDEBAR BEHAVIOR
+   ============================================================ */
+
+.sa-sidebar--collapsed .sa-sidebar__brand-text,
+.sa-sidebar--collapsed .sa-sidebar__link span:not(.sa-sidebar__icon),
+.sa-sidebar--collapsed .sa-sidebar__badge {
+  display: none;
+}
+
+
+.sa-sidebar--collapsed .sa-sidebar__brand {
+  justify-content: center;
+
+  padding-left: 0;
+  padding-right: 0;
+}
+
+
+.sa-sidebar--collapsed .sa-sidebar__link {
+  justify-content: center;
+
+  padding-left: 8px;
+  padding-right: 8px;
+
+  border-left-width: 2px;
+}
+
+
+.sa-sidebar--collapsed .sa-sidebar__footer {
+  display: flex;
+
+  justify-content: center;
+}
+
+
+/* ============================================================
+   SMOOTH BUTTON / INTERACTION STATES
+   ============================================================ */
+
+button,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+/* ============================================================
+   ACCESSIBILITY
+   ============================================================ */
+
+button:disabled {
+  user-select: none;
+}
+
+input::selection {
+  background: rgba(79, 70, 165, 0.15);
 }

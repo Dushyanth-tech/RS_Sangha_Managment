@@ -7,28 +7,6 @@
    1. CSS VARIABLES
    ========================================================= */
 
-:root {
-  /* Colors */
-  --pink-900: #4a0e2e;
-  --pink-700: #8a1245;
-  --pink-600: #a8194f;
-  --pink-500: #c62368;
-
-  --blush-100: #fdeef4;
-  --blush-50: #fbf9f7;
-
-  --ink: #1c1017;
-  --muted: #7c6b73;
-  --line: #ece4e7;
-
-  /* Radius */
-  --radius-lg: 18px;
-  --radius-md: 10px;
-
-  /* Fonts */
-  --font-body: "Inter", sans-serif;
-  --font-display: "Fraunces", serif;
-}
 
 
 /* =========================================================

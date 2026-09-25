@@ -4,8 +4,6 @@ import DataTable from "../../../../Common_Component/DataTable";
 import "../SuperAdminDashboard.css";
 import "./ManageMembers.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"; // kept only for building the photo URL below
-
 function initialsOf(name = "") {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "M";
 }
@@ -19,6 +17,10 @@ export default function ManageMembers() {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
+
+  const [photoSrc, setPhotoSrc] = useState(null);
+  const [panSrc, setPanSrc] = useState(null);
+  const [idProofSrc, setIdProofSrc] = useState(null);
 
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState("");
@@ -41,17 +43,38 @@ export default function ManageMembers() {
     fetchMembers();
   }, []);
 
+  // Revoke any blob URLs still held from a previous member before loading new ones
+  const clearImages = () => {
+    setPhotoSrc((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    setPanSrc((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    setIdProofSrc((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+  };
+
+  const loadImage = async (url, setter) => {
+    try {
+      const res = await api.get(url, { responseType: "blob" });
+      setter(URL.createObjectURL(res.data));
+    } catch {
+      // 404 (no image on file) or fetch failure — leave the placeholder showing
+    }
+  };
+
   const openMember = async (row) => {
     setActiveMember(row);
     setDetail(null);
     setDetailError("");
     setVerifyError("");
+    clearImages();
 
     try {
       setDetailLoading(true);
       const res = await api.get(`/superadmin/members/${row.id}`);
-      // console.log(res.data)
       setDetail(res.data);
+
+      const { has_profile_photo, has_pan_image, has_id_proof_image } = res.data.profile;
+      if (has_profile_photo) loadImage(`/superadmin/members/${row.id}/photo`, setPhotoSrc);
+      if (has_pan_image) loadImage(`/superadmin/members/${row.id}/pan-image`, setPanSrc);
+      if (has_id_proof_image) loadImage(`/superadmin/members/${row.id}/id-proof-image`, setIdProofSrc);
     } catch (error) {
       console.error("Error fetching member detail:", error);
       setDetailError(error.response?.data?.detail || "Failed to load member details.");
@@ -65,7 +88,14 @@ export default function ManageMembers() {
     setDetail(null);
     setDetailError("");
     setVerifyError("");
+    clearImages();
   };
+
+  // Revoke any lingering blob URLs if the component itself unmounts mid-view
+  useEffect(() => {
+    return () => clearImages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleVerify = async () => {
     if (!activeMember) return;
@@ -152,10 +182,10 @@ export default function ManageMembers() {
               ) : detail ? (
                 <>
                   <div className="mm-photo-row">
-                    {detail.profile.profile_photo_url ? (
+                    {photoSrc ? (
                       <img
                         className="mm-photo"
-                        src={`${API_BASE}${detail.profile.profile_photo_url}`}
+                        src={photoSrc}
                         alt={detail.profile.fullname}
                       />
                     ) : (
@@ -183,6 +213,31 @@ export default function ManageMembers() {
                       <div className="mm-field"><span>ID Proof</span><strong>{detail.profile.id_proof_number || "-"}</strong></div>
                       <div className="mm-field mm-field--wide"><span>Address</span><strong>{detail.profile.address || "-"}</strong></div>
                       <div className="mm-field"><span>Sangha</span><strong>{detail.profile.sanghaName}</strong></div>
+                    </div>
+                  </div>
+
+                  <div className="mm-section">
+                    <h4>Uploaded Documents</h4>
+                    <div className="mm-doc-row">
+                      <div className="mm-doc-item">
+                        {panSrc ? (
+                          <img className="mm-doc-img" src={panSrc} alt="PAN card" />
+                        ) : (
+                          <div className="mm-doc-img mm-doc-img--empty">No PAN image</div>
+                        )}
+                        <span>PAN Card</span>
+                      </div>
+
+                      <div className="mm-doc-item">
+                        {idProofSrc ? (
+                          <img className="mm-doc-img" src={idProofSrc} alt="ID proof" />
+                        ) : (
+                          <div className="mm-doc-img mm-doc-img--empty">No ID image</div>
+                        )}
+                        <span>
+                          {detail.profile.id_proof_type === "passport" ? "Passport" : "Aadhaar Card"}
+                        </span>
+                      </div>
                     </div>
                   </div>
 

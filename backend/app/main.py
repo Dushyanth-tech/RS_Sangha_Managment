@@ -1,7 +1,7 @@
 from app.crypto import encrypt_value, decrypt_value, mask_last4, encrypt_bytes, decrypt_bytes, hash_value
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import Response
-from fastapi.security import OAuth2PasswordRequestForm
+# from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload,SanghaUpdate, ProfileWizardUpdate, NotificationCreate, ClearNotificationsRequest
 from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus, BankDetails, Notification, NotificationRecipient
@@ -120,11 +120,11 @@ def register_user(user: NewUser, db = Depends(get_db)):
 
 @app.post("/auth/login")
 def login_user(
-    user: OAuth2PasswordRequestForm = Depends(),
+    user:LoginUser,
     db=Depends(get_db)
 ):
     db_user = db.query(User).filter(
-        User.email == user.username
+        User.email == user.email
     ).first()
 
     if not db_user:
@@ -1701,7 +1701,9 @@ def get_member_detail(member_id: int, db: Session = Depends(get_db), current_use
             "id_proof_type": member.id_proof_type,
             "id_proof_number": decrypt_value(member.id_proof_number_enc) if member.id_proof_number_enc else None,
             "pan_number": decrypt_value(member.pan_number_enc) if member.pan_number_enc else None,
-            "profile_photo_url": member.profile_photo_url,
+            "has_profile_photo": bool(member.profile_photo_image),
+            "has_pan_image": bool(member.pan_image_enc),
+            "has_id_proof_image": bool(member.id_proof_image_enc),
             "sanghaName": sangha_name or "-",
         },
         "banking": {
@@ -1713,7 +1715,6 @@ def get_member_detail(member_id: int, db: Session = Depends(get_db), current_use
             "branch_name": bank.branch_name if bank else None,
         } if bank else None,
     }
-
 
 @app.post("/superadmin/members/{member_id}/verify")
 def verify_member(
@@ -1733,3 +1734,4 @@ def verify_member(
     return {"detail": "Member verified", "isVerified": True}
 
 Base.metadata.create_all(bind=engine)
+

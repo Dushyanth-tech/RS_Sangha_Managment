@@ -5,6 +5,7 @@ import Overview from "./pages/Overview";
 import ManageAdmins from "./pages/ManageAdmins";
 import ManageSanghas from "./pages/ManageSanghas";
 import ManageMembers from "./pages/ManageMembers";
+import SanghaSavingsAccount from "./pages/SanghaSavingsAccount";
 import SubadminRequests from "./pages/SubadminRequests";
 import ActivityLog from "./pages/ActivityLog";
 import ManageNotifications from "./pages/ManageNotifications";
@@ -15,6 +16,7 @@ const PAGE_TITLES = {
   admins: "Manage Admins",
   sanghas: "Manage Sanghas",
   members:"Manage Members",
+  SavingsAccount:"Sanghas Savings Account",
   "subadmin-requests": "Subadmin Requests",
   notifications:"Manage Notification",
   "activity-log": "Activity Log",
@@ -25,6 +27,7 @@ const PAGES = {
   admins: ManageAdmins,
   sanghas: ManageSanghas,
   members:ManageMembers,
+  SavingsAccount:SanghaSavingsAccount,
   "subadmin-requests": SubadminRequests,
   notifications:ManageNotifications,
   "activity-log": ActivityLog,

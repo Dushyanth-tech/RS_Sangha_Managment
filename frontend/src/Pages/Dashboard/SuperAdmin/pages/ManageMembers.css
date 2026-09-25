@@ -146,3 +146,39 @@
   color: var(--muted);
   font-style: italic;
 }
+
+/* ---------- Document images (PAN / ID proof) ---------- */
+
+.mm-doc-row {
+  display: flex;
+  gap: 20px;
+}
+
+.mm-doc-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.mm-doc-img {
+  width: 150px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.mm-doc-img--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.76rem;
+  background: var(--blush-50);
+}
+
+.mm-doc-item span {
+  font-size: 0.76rem;
+  color: var(--muted);
+}

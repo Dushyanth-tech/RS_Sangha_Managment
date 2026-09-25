@@ -15,9 +15,8 @@ import Notifications from "./pages/Notifications";
 export default function MemberDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [page, setPage] = useState("home");
-
+  const [sanghasName, setSanghasName] = useState([]);
   const menuRef = useRef(null);
-
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   // ================= NOTIFICATIONS =================
@@ -47,8 +46,20 @@ export default function MemberDashboard() {
     }
   };
 
+    // Fetch logged-in member's Sangha(s)
+  const fetchSanghas = async () => {
+    try {
+      const response = await api.get("/member/my-sangha");
+      const data = response.data;
+      setSanghasName(data[0].name);
+    } catch (err) {
+      console.error("Failed to fetch Sanghas:", err);
+    } 
+  };
+
   useEffect(() => {
     fetchNotifications();
+    fetchSanghas();
   }, []);
 
   const handleMarkRead = async (notification) => {
@@ -201,7 +212,7 @@ export default function MemberDashboard() {
 
               <div className="md-card">
                 <div className="md-card__label">Sangha</div>
-                <div className="md-card__value">—</div>
+                <div className="md-card__value">{sanghasName || "—"}</div>
               </div>
 
               <div className="md-card">
@@ -240,7 +251,7 @@ export default function MemberDashboard() {
 
                 <div className="md-detail">
                   <span className="md-detail__label">Sangha</span>
-                  <span className="md-detail__value">—</span>
+                  <span className="md-detail__value">{sanghasName || "—"}</span>
                 </div>
 
                 <div className="md-detail">

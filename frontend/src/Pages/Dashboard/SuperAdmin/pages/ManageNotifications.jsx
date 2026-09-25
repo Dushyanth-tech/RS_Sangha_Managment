@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../../../../api/axiosInstance"; // ⚠️ verify this matches this file's actual depth
+import {Bell, Send, FilePenLine } from "lucide-react"
 import "./ManageNotifications.css";
 
 const emptyForm = {
@@ -229,7 +230,7 @@ export default function ManageNotifications() {
 
       <div className="sa-stats-grid mn-stats">
         <div className="sa-stat-card">
-          <div className="sa-stat-card__icon">🔔</div>
+          <div className="sa-stat-card__icon"><Bell size={20} strokeWidth={2} /></div>
           <div className="sa-stat-card__body">
             <span className="sa-stat-card__label">Total Notifications</span>
             <span className="sa-stat-card__value">{fetching ? "..." : totalNotifications}</span>
@@ -237,7 +238,7 @@ export default function ManageNotifications() {
         </div>
 
         <div className="sa-stat-card">
-          <div className="sa-stat-card__icon">✓</div>
+          <div className="sa-stat-card__icon"><Send size={20} strokeWidth={2} /></div>
           <div className="sa-stat-card__body">
             <span className="sa-stat-card__label">Sent</span>
             <span className="sa-stat-card__value">{fetching ? "..." : sentCount}</span>
@@ -245,7 +246,7 @@ export default function ManageNotifications() {
         </div>
 
         <div className="sa-stat-card">
-          <div className="sa-stat-card__icon">◷</div>
+          <div className="sa-stat-card__icon"><FilePenLine size={20} strokeWidth={2} /></div>
           <div className="sa-stat-card__body">
             <span className="sa-stat-card__label">Drafts</span>
             <span className="sa-stat-card__value">{fetching ? "..." : draftCount}</span>
@@ -254,7 +255,7 @@ export default function ManageNotifications() {
       </div>
 
       <section className="mn-featured">
-        <div className="mn-featured-icon">✓</div>
+        <div className="mn-featured-icon"><Send size={20} strokeWidth={2} /></div>
 
         <div className="mn-featured-content">
           <div className="mn-featured-top">
@@ -652,7 +653,7 @@ export default function ManageNotifications() {
             </div>
 
             <div className="mn-member-notification">
-              <div className="mn-member-notification-icon">🔔</div>
+              <div className="mn-member-notification-icon"><Bell size={20} strokeWidth={2} /></div>
 
               <div>
                 <div className="mn-member-notification-meta">

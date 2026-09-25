@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { key: "overview", label: "Overview", icon: House },
   { key: "sanghas", label: "My Sanghas", icon: Building2 },
   { key: "members", label: "Manage Members", icon: Users },
+  { key: "SavingsAccount", label: "Sanghas Savings Account", icon: Users },
   { key: "notifications", label: "Manage Notifications", icon: Bell },
   { key: "admin-requests", label: "Make Admin", icon: Mail },
 ];
@@ -60,7 +61,7 @@ export default function Sidebar({ activePage, onNavigate, collapsed }) {
 
       {!collapsed && (
         <div className="sa-sidebar__footer">
-          <span className="sa-sidebar__badge">Superadmin</span>
+          <span className="sa-sidebar__badge">Admin</span>
         </div>
       )}
     </aside>
