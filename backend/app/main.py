@@ -1740,13 +1740,51 @@ def verify_member(
     db: Session = Depends(get_db),
     current_user_id=Depends(get_current_user),
 ):
-    _require_superadmin(db, current_user_id)
+    verifier = _require_superadmin(db, current_user_id)   # returns the logged-in user (admin or superadmin)
 
     member = db.query(User).filter(User.id == member_id, User.role == "member").first()
     if not member:
         raise HTTPException(status_code=404, detail="Member not found.")
 
+    # Already verified: don't send a duplicate notification
+    if member.isVerified:
+        return {"detail": "Member already verified", "isVerified": True}
+
     member.isVerified = True
+
+    # ---------------------------------------------------------
+    # NOTIFY THE MEMBER
+    # ---------------------------------------------------------
+    sangha = None
+    if member.sangha_id:
+        sangha = db.query(Sanghas).filter(Sanghas.id == member.sangha_id).first()
+
+    greeting = (
+        f"Dear {sangha.name} sangha member,"
+        if sangha else "Dear member,"
+    )
+    verified_by = "Super Admin" if verifier.role == "superadmin" else "Admin"
+
+    notification = Notification(
+        title="Account details verified",
+        type="Announcement",
+        recipient="All Members",     # label only; delivery is via the NotificationRecipient row below
+        sangha_ids=json.dumps([sangha.id]) if sangha else None,
+        message=(
+            f"{greeting}\n\n"
+            f"Your account details have been verified successfully by the {verified_by}.\n\n"
+            f"Your profile and banking details are now approved."
+        ),
+        navigation_path=None,
+        status="Sent",
+        created_by=verifier.id,
+        sent_at=datetime.now(timezone.utc),
+    )
+    db.add(notification)
+    db.flush()
+
+    db.add(NotificationRecipient(notification_id=notification.id, user_id=member.id))
+
     db.commit()
 
     return {"detail": "Member verified", "isVerified": True}
@@ -1829,13 +1867,54 @@ def create_sangha_savings_account(
         balance_enc=encrypt_value("0"),   # always start at ₹0
         status="Active",
     )
-
     db.add(savings_account)
+    db.flush()   # get the id, but don't commit yet
+
+    # ---------------------------------------------------------
+    # NOTIFY ALL MEMBERS OF THIS SANGHA
+    # ---------------------------------------------------------
+    member_ids = [
+        row[0]
+        for row in db.query(User.id)
+        .filter(User.sangha_id == sangha.id, User.role == "member")
+        .all()
+    ]
+
+    if member_ids:
+        notification = Notification(
+            title="Savings account created for your Sangha",
+            type="Announcement",        # was "Info"
+            recipient="All Members",    # was "Sangha Members"
+            sangha_ids=json.dumps([sangha.id]),
+            message=(
+                f"Dear Sangha Members,\n\n" 
+                f"A savings account has been created successfully for your Sangha "
+                f"{sangha.name} ({sangha.code}).\n\n"
+                f"Account Holder: {account_holder},\n"
+                f"Bank: {bank},\n"
+                f"Branch: {branch},\n"
+                f"Account Type: {cleaned_account_type},\n"
+                f"Account Number: {mask_last4(cleaned_account_number)},\n"
+                f"IFSC: {cleaned_ifsc},\n"
+                f"Opening Balance: ₹0"
+            ),
+            navigation_path=None,
+            status="Sent",
+            created_by=current_user.id,
+            sent_at=datetime.now(timezone.utc),
+        )
+        db.add(notification)
+        db.flush()
+
+        for uid in member_ids:
+            db.add(NotificationRecipient(notification_id=notification.id, user_id=uid))
+
     db.commit()
     db.refresh(savings_account)
 
     return {
         "message": "Sangha savings account created successfully.",
+        "notified_members": len(member_ids),
         "account": {
             "id": savings_account.id,
             "sangha_id": sangha.id,

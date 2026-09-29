@@ -5,7 +5,14 @@ import "../SuperAdminDashboard.css";
 import "./ManageMembers.css";
 
 function initialsOf(name = "") {
-  return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "M";
+  return (
+    name
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "M"
+  );
 }
 
 export default function ManageMembers() {
@@ -45,9 +52,18 @@ export default function ManageMembers() {
 
   // Revoke any blob URLs still held from a previous member before loading new ones
   const clearImages = () => {
-    setPhotoSrc((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
-    setPanSrc((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
-    setIdProofSrc((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    setPhotoSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPanSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setIdProofSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
   };
 
   const loadImage = async (url, setter) => {
@@ -71,13 +87,22 @@ export default function ManageMembers() {
       const res = await api.get(`/superadmin/members/${row.id}`);
       setDetail(res.data);
 
-      const { has_profile_photo, has_pan_image, has_id_proof_image } = res.data.profile;
-      if (has_profile_photo) loadImage(`/superadmin/members/${row.id}/photo`, setPhotoSrc);
-      if (has_pan_image) loadImage(`/superadmin/members/${row.id}/pan-image`, setPanSrc);
-      if (has_id_proof_image) loadImage(`/superadmin/members/${row.id}/id-proof-image`, setIdProofSrc);
+      const { has_profile_photo, has_pan_image, has_id_proof_image } =
+        res.data.profile;
+      if (has_profile_photo)
+        loadImage(`/superadmin/members/${row.id}/photo`, setPhotoSrc);
+      if (has_pan_image)
+        loadImage(`/superadmin/members/${row.id}/pan-image`, setPanSrc);
+      if (has_id_proof_image)
+        loadImage(
+          `/superadmin/members/${row.id}/id-proof-image`,
+          setIdProofSrc,
+        );
     } catch (error) {
       console.error("Error fetching member detail:", error);
-      setDetailError(error.response?.data?.detail || "Failed to load member details.");
+      setDetailError(
+        error.response?.data?.detail || "Failed to load member details.",
+      );
     } finally {
       setDetailLoading(false);
     }
@@ -107,11 +132,15 @@ export default function ManageMembers() {
 
       setDetail((prev) => (prev ? { ...prev, isVerified: true } : prev));
       setMembers((prev) =>
-        prev.map((m) => (m.id === activeMember.id ? { ...m, isVerified: true } : m))
+        prev.map((m) =>
+          m.id === activeMember.id ? { ...m, isVerified: true } : m,
+        ),
       );
     } catch (error) {
       console.error("Error verifying member:", error);
-      setVerifyError(error.response?.data?.detail || "Failed to verify member.");
+      setVerifyError(
+        error.response?.data?.detail || "Failed to verify member.",
+      );
     } finally {
       setVerifying(false);
     }
@@ -123,8 +152,8 @@ export default function ManageMembers() {
         <div>
           <h2 className="sa-section__title">Manage Members</h2>
           <p className="mm-subtitle">
-            Showing members who have completed both their profile and banking details.
-            Verify their information below.
+            Showing members who have completed both their profile and banking
+            details. Verify their information below.
           </p>
         </div>
       </div>
@@ -150,28 +179,42 @@ export default function ManageMembers() {
               key: "isVerified",
               label: "Status",
               render: (row) => (
-                <span className={`sa-badge ${row.isVerified ? "sa-badge--approved" : "sa-badge--pending"}`}>
+                <span
+                  className={`sa-badge ${row.isVerified ? "sa-badge--approved" : "sa-badge--pending"}`}
+                >
                   {row.isVerified ? "Verified" : "Unverified"}
                 </span>
               ),
             },
           ]}
           rows={members}
-          emptyText={fetching ? "Loading..." : "No members have completed both profile and banking details yet"}
+          emptyText={
+            fetching
+              ? "Loading..."
+              : "No members have completed both profile and banking details yet"
+          }
           actions={(row) => (
             <button className="sa-btn-outline" onClick={() => openMember(row)}>
-              View &amp; Verify
+              {row.isVerified ? "View" : "View & Verify"}
             </button>
           )}
         />
       </div>
 
       {activeMember && (
-        <div className="mm-modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && closeModal()}>
+        <div
+          className="mm-modal-overlay"
+          onMouseDown={(e) => e.target === e.currentTarget && closeModal()}
+        >
           <div className="mm-modal">
             <div className="mm-modal__header">
-              <h3>Member Verification</h3>
-              <button className="mm-modal__close" onClick={closeModal}>&times;</button>
+              {/* <h3>Member Verification</h3> */}
+              <h3>
+                {detail?.isVerified ? "Member Details" : "Member Verification"}
+              </h3>
+              <button className="mm-modal__close" onClick={closeModal}>
+                &times;
+              </button>
             </div>
 
             <div className="mm-modal__body">
@@ -196,7 +239,9 @@ export default function ManageMembers() {
 
                     <div>
                       <div className="mm-name">{detail.profile.fullname}</div>
-                      <span className={`sa-badge ${detail.isVerified ? "sa-badge--approved" : "sa-badge--pending"}`}>
+                      <span
+                        className={`sa-badge ${detail.isVerified ? "sa-badge--approved" : "sa-badge--pending"}`}
+                      >
                         {detail.isVerified ? "Verified" : "Unverified"}
                       </span>
                     </div>
@@ -205,14 +250,38 @@ export default function ManageMembers() {
                   <div className="mm-section">
                     <h4>Personal Details</h4>
                     <div className="mm-grid">
-                      <div className="mm-field"><span>Email</span><strong>{detail.profile.email || "-"}</strong></div>
-                      <div className="mm-field"><span>Phone</span><strong>{detail.profile.phone || "-"}</strong></div>
-                      <div className="mm-field"><span>Date of Birth</span><strong>{detail.profile.date_of_birth || "-"}</strong></div>
-                      <div className="mm-field"><span>PAN Number</span><strong>{detail.profile.pan_number || "-"}</strong></div>
-                      <div className="mm-field"><span>ID Proof Type</span><strong>{detail.profile.id_proof_type || "-"}</strong></div>
-                      <div className="mm-field"><span>ID Proof</span><strong>{detail.profile.id_proof_number || "-"}</strong></div>
-                      <div className="mm-field mm-field--wide"><span>Address</span><strong>{detail.profile.address || "-"}</strong></div>
-                      <div className="mm-field"><span>Sangha</span><strong>{detail.profile.sanghaName}</strong></div>
+                      <div className="mm-field">
+                        <span>Email</span>
+                        <strong>{detail.profile.email || "-"}</strong>
+                      </div>
+                      <div className="mm-field">
+                        <span>Phone</span>
+                        <strong>{detail.profile.phone || "-"}</strong>
+                      </div>
+                      <div className="mm-field">
+                        <span>Date of Birth</span>
+                        <strong>{detail.profile.date_of_birth || "-"}</strong>
+                      </div>
+                      <div className="mm-field">
+                        <span>PAN Number</span>
+                        <strong>{detail.profile.pan_number || "-"}</strong>
+                      </div>
+                      <div className="mm-field">
+                        <span>ID Proof Type</span>
+                        <strong>{detail.profile.id_proof_type || "-"}</strong>
+                      </div>
+                      <div className="mm-field">
+                        <span>ID Proof</span>
+                        <strong>{detail.profile.id_proof_number || "-"}</strong>
+                      </div>
+                      <div className="mm-field mm-field--wide">
+                        <span>Address</span>
+                        <strong>{detail.profile.address || "-"}</strong>
+                      </div>
+                      <div className="mm-field">
+                        <span>Sangha</span>
+                        <strong>{detail.profile.sanghaName}</strong>
+                      </div>
                     </div>
                   </div>
 
@@ -221,21 +290,35 @@ export default function ManageMembers() {
                     <div className="mm-doc-row">
                       <div className="mm-doc-item">
                         {panSrc ? (
-                          <img className="mm-doc-img" src={panSrc} alt="PAN card" />
+                          <img
+                            className="mm-doc-img"
+                            src={panSrc}
+                            alt="PAN card"
+                          />
                         ) : (
-                          <div className="mm-doc-img mm-doc-img--empty">No PAN image</div>
+                          <div className="mm-doc-img mm-doc-img--empty">
+                            No PAN image
+                          </div>
                         )}
                         <span>PAN Card</span>
                       </div>
 
                       <div className="mm-doc-item">
                         {idProofSrc ? (
-                          <img className="mm-doc-img" src={idProofSrc} alt="ID proof" />
+                          <img
+                            className="mm-doc-img"
+                            src={idProofSrc}
+                            alt="ID proof"
+                          />
                         ) : (
-                          <div className="mm-doc-img mm-doc-img--empty">No ID image</div>
+                          <div className="mm-doc-img mm-doc-img--empty">
+                            No ID image
+                          </div>
                         )}
                         <span>
-                          {detail.profile.id_proof_type === "passport" ? "Passport" : "Aadhaar Card"}
+                          {detail.profile.id_proof_type === "passport"
+                            ? "Passport"
+                            : "Aadhaar Card"}
                         </span>
                       </div>
                     </div>
@@ -245,32 +328,65 @@ export default function ManageMembers() {
                     <h4>Banking Details</h4>
                     {detail.banking ? (
                       <div className="mm-grid">
-                        <div className="mm-field"><span>Account Number</span><strong>{detail.banking.account_number || "-"}</strong></div>
-                        <div className="mm-field"><span>Account Holder</span><strong>{detail.banking.account_holder_name || "-"}</strong></div>
-                        <div className="mm-field"><span>Bank Name</span><strong>{detail.banking.bank_name || "-"}</strong></div>
-                        <div className="mm-field"><span>Account Type</span><strong>{detail.banking.account_type || "-"}</strong></div>
-                        <div className="mm-field"><span>IFSC Code</span><strong>{detail.banking.ifsc_code || "-"}</strong></div>
-                        <div className="mm-field mm-field--wide"><span>Branch</span><strong>{detail.banking.branch_name || "-"}</strong></div>
+                        <div className="mm-field">
+                          <span>Account Number</span>
+                          <strong>
+                            {detail.banking.account_number || "-"}
+                          </strong>
+                        </div>
+                        <div className="mm-field">
+                          <span>Account Holder</span>
+                          <strong>
+                            {detail.banking.account_holder_name || "-"}
+                          </strong>
+                        </div>
+                        <div className="mm-field">
+                          <span>Bank Name</span>
+                          <strong>{detail.banking.bank_name || "-"}</strong>
+                        </div>
+                        <div className="mm-field">
+                          <span>Account Type</span>
+                          <strong>{detail.banking.account_type || "-"}</strong>
+                        </div>
+                        <div className="mm-field">
+                          <span>IFSC Code</span>
+                          <strong>{detail.banking.ifsc_code || "-"}</strong>
+                        </div>
+                        <div className="mm-field mm-field--wide">
+                          <span>Branch</span>
+                          <strong>{detail.banking.branch_name || "-"}</strong>
+                        </div>
                       </div>
                     ) : (
-                      <p className="mm-empty-note">No banking details submitted yet.</p>
+                      <p className="mm-empty-note">
+                        No banking details submitted yet.
+                      </p>
                     )}
                   </div>
 
-                  {verifyError && <div className="sa-error" style={{ marginTop: "1rem" }}>{verifyError}</div>}
+                  {verifyError && (
+                    <div className="sa-error" style={{ marginTop: "1rem" }}>
+                      {verifyError}
+                    </div>
+                  )}
                 </>
               ) : null}
             </div>
 
             <div className="mm-modal__footer">
-              <button className="sa-btn-outline" onClick={closeModal}>Close</button>
-              <button
-                className="sa-btn-primary"
-                onClick={handleVerify}
-                disabled={!detail || detail.isVerified || verifying}
-              >
-                {verifying ? "Verifying..." : detail?.isVerified ? "Already Verified" : "Verify"}
+              <button className="sa-btn-outline" onClick={closeModal}>
+                Close
               </button>
+
+              {detail && !detail.isVerified && (
+                <button
+                  className="sa-btn-primary"
+                  onClick={handleVerify}
+                  disabled={verifying}
+                >
+                  {verifying ? "Verifying..." : "Verify"}
+                </button>
+              )}
             </div>
           </div>
         </div>
