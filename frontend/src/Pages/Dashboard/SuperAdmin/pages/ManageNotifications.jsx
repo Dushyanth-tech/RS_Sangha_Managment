@@ -382,7 +382,6 @@ export default function ManageNotifications() {
                 <th>Recipient</th>
                 <th>Status</th>
                 <th>Sent / Created</th>
-                <th>Action</th>
               </tr>
             </thead>
             <tbody>

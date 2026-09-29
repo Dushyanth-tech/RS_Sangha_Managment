@@ -98,6 +98,13 @@ class Sanghas(Base):
     members: Mapped[list["User"]] = relationship(
         back_populates="sangha", foreign_keys="User.sangha_id"
     )
+    savings_account = relationship(
+        "SanghaSavingsAccount",
+        back_populates="sangha",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    
 
 
 class SubAdminRequest(Base):
@@ -179,3 +186,82 @@ class NotificationRecipient(Base):
     read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     __table_args__ = (UniqueConstraint("notification_id", "user_id", name="uq_notification_recipient"),)
+
+class SanghaSavingsAccount(Base):
+    __tablename__ = "sangha_savings_accounts"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
+
+    sangha_id: Mapped[int] = mapped_column(
+        ForeignKey("sanghas.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    account_holder_enc: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    bank_name_enc: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    account_number_enc: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    ifsc_code_enc: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    branch_name_enc: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    account_type_enc: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    balance_enc: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="Active",
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+    # -----------------------------------------
+    # Relationship → Sangha
+    # -----------------------------------------
+
+    sangha: Mapped["Sanghas"] = relationship(
+        "Sanghas",
+        back_populates="savings_account",
+    )

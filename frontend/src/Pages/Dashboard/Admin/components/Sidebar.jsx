@@ -7,13 +7,14 @@ import {
   Mail,
   ClipboardList,
   Bell,
+  PiggyBank
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { key: "overview", label: "Overview", icon: House },
   { key: "sanghas", label: "My Sanghas", icon: Building2 },
   { key: "members", label: "Manage Members", icon: Users },
-  { key: "SavingsAccount", label: "Sanghas Savings Account", icon: Users },
+  { key: "SavingsAccount", label: "Sanghas Savings Account", icon: PiggyBank },
   { key: "notifications", label: "Manage Notifications", icon: Bell },
   { key: "admin-requests", label: "Make Admin", icon: Mail },
 ];

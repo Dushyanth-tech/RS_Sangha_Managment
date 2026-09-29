@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "../../../../api/axiosInstance"; // ⚠️ verify this matches your actual folder depth
 
+const MAX_MEMBERS = 20;
+
 export default function AddMembersModal({ sangha, onClose, onMemberAdded }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState(null);
+  const [error, setError] = useState("");
+  const [memberCount, setMemberCount] = useState(sangha.membersCount ?? 0);
   const debounceRef = useRef(null);
+
+  const isFull = memberCount >= MAX_MEMBERS;
 
   const fetchMembers = async (q) => {
     try {
@@ -15,8 +21,8 @@ export default function AddMembersModal({ sangha, onClose, onMemberAdded }) {
         params: { q, role: "member" },
       });
       setResults(res.data);
-    } catch (error) {
-      console.error("Error fetching members:", error);
+    } catch (err) {
+      console.error("Error fetching members:", err);
     } finally {
       setLoading(false);
     }
@@ -37,16 +43,21 @@ export default function AddMembersModal({ sangha, onClose, onMemberAdded }) {
   }, [query]);
 
   const handleAdd = async (member) => {
+    if (isFull) return;
+
     try {
       setAddingId(member.id);
+      setError("");
       const res = await api.post(`/sanghas/${sangha.id}/members`, {
         member_id: member.id,
       });
+      setMemberCount(res.data.membersCount);
       onMemberAdded(sangha.id, res.data.membersCount);
       fetchMembers(query); // refresh so the row flips from Add to Member/Added state
-    } catch (error) {
-      console.error("Error adding member:", error);
-      if (error.response) console.log("Backend error:", error.response.data);
+    } catch (err) {
+      console.error("Error adding member:", err);
+      const detail = err.response?.data?.detail;
+      setError(typeof detail === "string" ? detail : "Failed to add member.");
     } finally {
       setAddingId(null);
     }
@@ -63,6 +74,19 @@ export default function AddMembersModal({ sangha, onClose, onMemberAdded }) {
         </div>
 
         <div className="sa-modal__body">
+          <div style={{ marginBottom: "0.75rem" }}>
+            <span className={`sa-badge ${isFull ? "sa-badge--rejected" : "sa-badge--approved"}`}>
+              {memberCount} / {MAX_MEMBERS} members
+            </span>
+            {isFull && (
+              <span style={{ marginLeft: "0.6rem", fontSize: "0.8rem" }} className="sa-error">
+                This Sangha is full. Remove a member before adding another.
+              </span>
+            )}
+          </div>
+
+          {error && <div className="sa-error" style={{ marginBottom: "0.75rem" }}>{error}</div>}
+
           <input
             className="sa-input"
             placeholder="Search by name, email or phone..."
@@ -110,8 +134,9 @@ export default function AddMembersModal({ sangha, onClose, onMemberAdded }) {
                         ) : (
                           <button
                             className="sa-btn-primary"
-                            disabled={addingId === m.id}
+                            disabled={addingId === m.id || isFull}
                             onClick={() => handleAdd(m)}
+                            title={isFull ? "This Sangha is full" : undefined}
                           >
                             {addingId === m.id ? "Adding..." : "Add"}
                           </button>

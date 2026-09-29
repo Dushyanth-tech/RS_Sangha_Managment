@@ -15,7 +15,7 @@ import Notifications from "./pages/Notifications";
 export default function MemberDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [page, setPage] = useState("home");
-  const [sanghasName, setSanghasName] = useState([]);
+  const [sanghasName, setSanghasName] = useState("");
   const menuRef = useRef(null);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -51,7 +51,7 @@ export default function MemberDashboard() {
     try {
       const response = await api.get("/member/my-sangha");
       const data = response.data;
-      setSanghasName(data[0].name);
+      setSanghasName(data?.[0]?.name || "");
     } catch (err) {
       console.error("Failed to fetch Sanghas:", err);
     } 

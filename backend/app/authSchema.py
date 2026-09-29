@@ -1,6 +1,6 @@
 from datetime import date
 from enum import Enum
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, Field
 from typing import Optional
 import re
 
@@ -195,3 +195,13 @@ class NotificationCreate(BaseModel):
 
 class ClearNotificationsRequest(BaseModel):
     notification_ids: list[int]
+
+
+class SanghaSavingsAccountCreate(BaseModel):
+    sangha_id: int
+    account_holder: str = Field(..., min_length=2)
+    bank: str = Field(..., min_length=2)
+    account_number: str
+    ifsc: str
+    branch: str = Field(..., min_length=2)
+    account_type: str = "Savings"

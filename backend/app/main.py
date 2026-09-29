@@ -3,12 +3,12 @@ from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import Response
 # from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
-from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload,SanghaUpdate, ProfileWizardUpdate, NotificationCreate, ClearNotificationsRequest
-from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus, BankDetails, Notification, NotificationRecipient
+from app.authSchema import NewUser, LoginUser, NewSanghas, Search, AdminRequestCreate,AddAdminRequest,RemoveSanghasPayload,SanghaUpdate, ProfileWizardUpdate, NotificationCreate, ClearNotificationsRequest, SanghaSavingsAccountCreate
+from app.authModal import User, Sanghas, SubAdminRequest, RequestStatus, BankDetails, Notification, NotificationRecipient, SanghaSavingsAccount
 from app.dbconnection import get_db, engine, Base
 from app.auth import create_access_token, hash_password, verify_password, get_current_user
 from sqlalchemy import or_,func, select
-from sqlalchemy.orm import aliased, Session
+from sqlalchemy.orm import aliased, Session, joinedload
 from datetime import datetime, timezone
 import re
 import json
@@ -330,6 +330,9 @@ def get_my_sangha_members(
         }
         for member in members
     ]
+
+MAX_MEMBERS_PER_SANGHA = 20
+
 @app.post("/sanghas/{sangha_id}/members")
 def add_member(
     sangha_id: int,
@@ -338,7 +341,14 @@ def add_member(
     current_user_id=Depends(get_current_user),
 ):
     member_id = payload.get("member_id")
-    sangha = db.query(Sanghas).filter(Sanghas.id == sangha_id).first()
+
+    # Lock the sangha row so two simultaneous adds can't both slip past the limit
+    sangha = (
+        db.query(Sanghas)
+        .filter(Sanghas.id == sangha_id)
+        .with_for_update()
+        .first()
+    )
     if not sangha:
         raise HTTPException(404, "Sangha not found")
 
@@ -354,8 +364,16 @@ def add_member(
             else "User is already a member of this sangha"
         )
 
+    # Count real rows rather than trusting membersCount, which can drift
+    current_count = db.query(User).filter(User.sangha_id == sangha_id).count()
+    if current_count >= MAX_MEMBERS_PER_SANGHA:
+        raise HTTPException(
+            400,
+            f"This Sangha is full ({MAX_MEMBERS_PER_SANGHA} members maximum).",
+        )
+
     member.sangha_id = sangha_id
-    sangha.membersCount += 1
+    sangha.membersCount = current_count + 1
     db.commit()
 
     return {"detail": "Member added", "membersCount": sangha.membersCount}
@@ -1732,6 +1750,232 @@ def verify_member(
     db.commit()
 
     return {"detail": "Member verified", "isVerified": True}
+
+@app.post("/sangha-savings-accounts")
+def create_sangha_savings_account(
+    payload: SanghaSavingsAccountCreate,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    current_user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role not in ("superadmin", "admin"):
+        raise HTTPException(
+            status_code=403,
+            detail="Only admin and superadmin can create Sangha savings accounts."
+        )
+
+    sangha = db.query(Sanghas).filter(Sanghas.id == payload.sangha_id).first()
+    if not sangha:
+        raise HTTPException(status_code=404, detail="Sangha not found.")
+
+    # An admin can only create an account for a Sangha they manage
+    if current_user.role == "admin" and sangha.admin_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only create a savings account for a Sangha you manage."
+        )
+
+    existing_account = (
+        db.query(SanghaSavingsAccount)
+        .filter(SanghaSavingsAccount.sangha_id == sangha.id)
+        .first()
+    )
+    if existing_account:
+        raise HTTPException(
+            status_code=409,
+            detail="A savings account already exists for this Sangha."
+        )
+
+    cleaned_account_number = re.sub(r"\D", "", payload.account_number.strip())
+    if not (9 <= len(cleaned_account_number) <= 18):
+        raise HTTPException(
+            status_code=422,
+            detail="Account number must contain between 9 and 18 digits."
+        )
+
+    cleaned_ifsc = payload.ifsc.strip().upper()
+    if not re.match(r"^[A-Z]{4}0[A-Z0-9]{6}$", cleaned_ifsc):
+        raise HTTPException(status_code=422, detail="Invalid IFSC code.")
+
+    cleaned_account_type = payload.account_type.strip().title()
+    if cleaned_account_type not in ("Savings", "Current"):
+        raise HTTPException(
+            status_code=422,
+            detail="Account type must be Savings or Current."
+        )
+
+    account_holder = payload.account_holder.strip()
+    bank = payload.bank.strip()
+    branch = payload.branch.strip()
+
+    if not account_holder:
+        raise HTTPException(status_code=422, detail="Account holder name is required.")
+    if not bank:
+        raise HTTPException(status_code=422, detail="Bank name is required.")
+    if not branch:
+        raise HTTPException(status_code=422, detail="Branch name is required.")
+
+    savings_account = SanghaSavingsAccount(
+        sangha_id=sangha.id,
+        account_holder_enc=encrypt_value(account_holder),
+        bank_name_enc=encrypt_value(bank),
+        account_number_enc=encrypt_value(cleaned_account_number),
+        ifsc_code_enc=encrypt_value(cleaned_ifsc),
+        branch_name_enc=encrypt_value(branch),
+        account_type_enc=encrypt_value(cleaned_account_type),
+        balance_enc=encrypt_value("0"),   # always start at ₹0
+        status="Active",
+    )
+
+    db.add(savings_account)
+    db.commit()
+    db.refresh(savings_account)
+
+    return {
+        "message": "Sangha savings account created successfully.",
+        "account": {
+            "id": savings_account.id,
+            "sangha_id": sangha.id,
+            "sangha_code": sangha.code,
+            "sangha_name": sangha.name,
+            "account_holder": account_holder,
+            "bank": bank,
+            "account_number": cleaned_account_number,
+            "ifsc": cleaned_ifsc,
+            "branch": branch,
+            "account_type": cleaned_account_type,
+            "balance": 0,
+            "status": "Active",
+        },
+    }
+
+@app.get("/sangha-savings-accounts")
+def get_sangha_savings_accounts(
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    current_user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role not in ("superadmin", "admin"):
+        raise HTTPException(
+            status_code=403,
+            detail="Only admin and superadmin can view Sangha savings accounts."
+        )
+
+    accounts_query = (
+        db.query(SanghaSavingsAccount)
+        .options(joinedload(SanghaSavingsAccount.sangha))
+        .join(Sanghas, Sanghas.id == SanghaSavingsAccount.sangha_id)
+    )
+
+    # An admin only sees accounts of Sanghas they manage
+    if current_user.role == "admin":
+        accounts_query = accounts_query.filter(Sanghas.admin_id == current_user.id)
+
+    accounts = accounts_query.all()
+
+    # Admin names in one query
+    admin_ids = {a.sangha.admin_id for a in accounts if a.sangha.admin_id}
+    admin_names = {}
+    if admin_ids:
+        admin_names = {
+            u.id: u.fullname
+            for u in db.query(User).filter(User.id.in_(admin_ids)).all()
+        }
+
+    # Member counts in one grouped query
+    sangha_ids = [a.sangha_id for a in accounts]
+    member_counts = {}
+    if sangha_ids:
+        member_counts = dict(
+            db.query(User.sangha_id, func.count(User.id))
+            .filter(User.sangha_id.in_(sangha_ids), User.role == "member")
+            .group_by(User.sangha_id)
+            .all()
+        )
+
+    def admin_label(sangha):
+        if sangha.admin_id is None:
+            return "—"
+        if current_user.role == "admin" and sangha.admin_id == current_user.id:
+            return "You"
+        return admin_names.get(sangha.admin_id, "—")
+
+    result = []
+    for account in accounts:
+        sangha = account.sangha
+
+        result.append({
+            "id": account.id,
+            "status": account.status,
+            "sanghaId": sangha.id,
+            "sanghaCode": sangha.code,
+            "sanghaName": sangha.name,
+            "admin": admin_label(sangha),
+            "membersCount": member_counts.get(sangha.id, 0),
+            "bankDetails": {
+                "accountHolder": decrypt_value(account.account_holder_enc),
+                "bank": decrypt_value(account.bank_name_enc),
+                "accountNumber": decrypt_value(account.account_number_enc),
+                "ifsc": decrypt_value(account.ifsc_code_enc),
+                "branch": decrypt_value(account.branch_name_enc),
+                "accountType": decrypt_value(account.account_type_enc),
+                "balance": float(decrypt_value(account.balance_enc)),
+                "status": account.status,
+            },
+        })
+
+    return result
+
+@app.get("/sangha-savings-accounts/{sangha_id}/members")
+def get_sangha_members(
+    sangha_id: int,
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    current_user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if current_user.role not in ("superadmin", "admin"):
+        raise HTTPException(status_code=403, detail="Not allowed.")
+
+    # Admins may only view Sanghas they manage
+    if current_user.role == "admin":
+        owns = db.query(Sanghas).filter(
+            Sanghas.id == sangha_id,
+            Sanghas.admin_id == current_user.id,
+        ).first()
+        if not owns:
+            raise HTTPException(status_code=403, detail="You do not manage this Sangha.")
+
+    rows = (
+        db.query(User, BankDetails)
+        .outerjoin(BankDetails, BankDetails.user_id == User.id)
+        .filter(User.sangha_id == sangha_id, User.role == "member")
+        .order_by(User.fullname.asc())
+        .all()
+    )
+
+    return [
+        {
+            "id": member.id,
+            "name": member.fullname,
+            "bank": bank.bank_name if bank else None,
+            "accountNumber": (
+                mask_last4(decrypt_value(bank.account_number_enc))
+                if bank and bank.account_number_enc else None
+            ),
+            "ifsc": bank.ifsc_code if bank else None,
+            "status": "Verified" if member.isVerified else "Unverified",
+        }
+        for member, bank in rows
+    ]
 
 Base.metadata.create_all(bind=engine)
 
