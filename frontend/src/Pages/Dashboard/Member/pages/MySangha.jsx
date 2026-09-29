@@ -1,9 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { Building2, X, Users, Loader2 } from "lucide-react";
+import {
+  Building2,
+  X,
+  Users,
+  Loader2,
+  MapPin,
+  ArrowRight,
+} from "lucide-react";
 
 import api from "../../../../api/axiosInstance";
-import DataTable from "../../../../Common_Component/DataTable";
 import "./MySangha.css";
+
+const MAX_MEMBERS = 20;
 
 export default function MySangha() {
   const [sanghas, setSanghas] = useState([]);
@@ -22,15 +30,12 @@ export default function MySangha() {
       setError("");
 
       const response = await api.get("/member/my-sangha");
-
       const data = response.data;
-
       const sanghaList = Array.isArray(data) ? data : (data.sanghas ?? []);
 
       setSanghas(sanghaList);
     } catch (err) {
       console.error("Failed to fetch Sanghas:", err);
-
       setError(
         err.response?.data?.detail || "Unable to fetch Sangha information.",
       );
@@ -52,15 +57,12 @@ export default function MySangha() {
 
     try {
       const response = await api.get("/member/my-sangha/members");
-
       const data = response.data;
-
       const memberList = Array.isArray(data) ? data : (data.members ?? []);
 
       setMembers(memberList);
     } catch (err) {
       console.error("Failed to fetch members:", err);
-
       setMembersError(
         err.response?.data?.detail || "Unable to fetch Sangha members.",
       );
@@ -76,39 +78,10 @@ export default function MySangha() {
     setMembersError("");
   };
 
-  // Table columns
-  const columns = [
-    {
-      key: "code",
-      label: "Sangha Code",
-    },
-    {
-      key: "name",
-      label: "Sangha Name",
-    },
-    {
-      key: "address",
-      label: "Sangha Address",
-      render: (row) =>
-        [row.address, row.city, row.state].filter(Boolean).join(", ") || "N/A",
-    },
-    {
-      key: "admin_name",
-      label: "Admin Name",
-      render: (row) => row.admin_name || row.admin?.name || "Not assigned",
-    },
-    {
-      key: "membersCount",
-      label: "Members",
-      render: (row) => row.membersCount ?? row.members_count ?? 0,
-    },
-  ];
-
   return (
     <section className="md-page">
       <div className="md-page__header">
         <h1 className="md-page__title">My Sangha</h1>
-
         <p className="md-page__subtitle">
           View your Sangha information and membership details.
         </p>
@@ -116,8 +89,7 @@ export default function MySangha() {
 
       {error && (
         <div className="md-notif-error">
-          {error}
-
+          {error}{" "}
           <button
             type="button"
             className="md-notif-error__retry"
@@ -141,9 +113,7 @@ export default function MySangha() {
             <div className="md-empty__icon">
               <Building2 size={28} strokeWidth={1.8} />
             </div>
-
             <h3>No Sangha assigned</h3>
-
             <p>
               Your Sangha information will appear here once you are assigned to
               a Sangha.
@@ -151,23 +121,66 @@ export default function MySangha() {
           </div>
         </section>
       ) : (
-        <section className="md-panel">
-          <DataTable
-            columns={columns}
-            rows={sanghas}
-            emptyText="No Sanghas found"
-            actions={(row) => (
-              <button
-                type="button"
-                className="md-view-members-btn"
-                onClick={() => handleViewMembers(row)}
-              >
-                <Users size={16} />
-                View Members
-              </button>
-            )}
-          />
-        </section>
+        <div className="md-sangha-list">
+          {sanghas.map((sangha) => {
+            const location =
+              [sangha.city, sangha.state].filter(Boolean).join(", ") || "N/A";
+            const count = sangha.membersCount ?? sangha.members_count ?? 0;
+
+            return (
+              <article key={sangha.id} className="md-sangha-card">
+                <div className="md-sangha-card__top">
+                  <h2>My Sangha</h2>
+                  <button
+                    type="button"
+                    className="md-sangha-card__link"
+                    onClick={() => handleViewMembers(sangha)}
+                  >
+                    View <ArrowRight size={14} />
+                  </button>
+                </div>
+
+                <div className="md-sangha-card__identity">
+                  <div className="md-sangha-card__icon">
+                    <Building2 size={22} strokeWidth={1.8} />
+                  </div>
+                  <div>
+                    <div className="md-sangha-card__name">{sangha.name}</div>
+                    <div className="md-sangha-card__code">{sangha.code}</div>
+                  </div>
+                </div>
+
+                <dl className="md-sangha-card__details">
+                  <div>
+                    <dt>Admin</dt>
+                    <dd>{sangha.admin_name || "Not assigned"}</dd>
+                  </div>
+                  <div>
+                    <dt>Location</dt>
+                    <dd>
+                      <MapPin size={14} /> {location}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Members</dt>
+                    <dd>
+                      {count} / {sangha.maxMembers ?? MAX_MEMBERS}
+                    </dd>
+                  </div>
+                </dl>
+
+                <button
+                  type="button"
+                  className="md-view-members-btn"
+                  onClick={() => handleViewMembers(sangha)}
+                >
+                  <Users size={16} />
+                  View Members
+                </button>
+              </article>
+            );
+          })}
+        </div>
       )}
 
       {/* Members Modal */}
@@ -180,7 +193,6 @@ export default function MySangha() {
             <div className="md-modal__header">
               <div>
                 <h2>{selectedSangha.name || "Sangha Members"}</h2>
-
                 <p>{selectedSangha.code || ""}</p>
               </div>
 
@@ -217,7 +229,6 @@ export default function MySangha() {
                       <div className="md-member-list-item__info">
                         <strong>
                           {member.name}
-
                           {member.is_current_user && " (You)"}
                         </strong>
 

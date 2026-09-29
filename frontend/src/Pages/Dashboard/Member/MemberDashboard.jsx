@@ -5,19 +5,40 @@ import {
   Building2,
   Bell,
   ChevronDown,
+  Wallet,
+  Landmark,
+  CreditCard,
+  Settings,
 } from "lucide-react";
 
 import "./MemberDashboard.css";
+import HomePage from "./pages/HomePage";
 import ProfileWizard from "./pages/ProfileWizard";
 import MySangha from "./pages/MySangha";
+import MyPayments from "./pages/MyPayments";
+import SanghaSavings from "./pages/SanghaSavings";
+import Loans from "./pages/Loans";
+import SettingsPage from "./pages/SettingsPage";
 import Notifications from "./pages/Notifications";
 
+  const NAV_ITEMS = [
+    { key: "home", label: "Home", icon: House },
+    { key: "sangha", label: "My Sangha", icon: Building2 },
+    { key: "payments", label: "My Payments", icon: Wallet },
+    { key: "savings", label: "Sangha Savings", icon: Landmark },
+    { key: "loans", label: "Loans", icon: CreditCard },
+    { key: "notifications", label: "Notifications", icon: Bell },
+    { key: "settings", label: "Settings", icon: Settings },
+  ];
+
 export default function MemberDashboard() {
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [page, setPage] = useState("home");
   const [sanghasName, setSanghasName] = useState("");
   const menuRef = useRef(null);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  
 
   // ================= NOTIFICATIONS =================
   // Lifted here (rather than living inside Notifications.jsx) because the
@@ -39,14 +60,14 @@ export default function MemberDashboard() {
     } catch (error) {
       console.error("Error fetching notifications:", error);
       setNotifError(
-        error.response?.data?.detail || "Failed to load notifications."
+        error.response?.data?.detail || "Failed to load notifications.",
       );
     } finally {
       setNotifLoading(false);
     }
   };
 
-    // Fetch logged-in member's Sangha(s)
+  // Fetch logged-in member's Sangha(s)
   const fetchSanghas = async () => {
     try {
       const response = await api.get("/member/my-sangha");
@@ -54,7 +75,7 @@ export default function MemberDashboard() {
       setSanghasName(data?.[0]?.name || "");
     } catch (err) {
       console.error("Failed to fetch Sanghas:", err);
-    } 
+    }
   };
 
   useEffect(() => {
@@ -70,8 +91,8 @@ export default function MemberDashboard() {
       await api.patch(`/me/notifications/${notification.id}/read`, {});
       setNotifications((prev) =>
         prev.map((n) =>
-          n.id === notification.id ? { ...n, isRead: true } : n
-        )
+          n.id === notification.id ? { ...n, isRead: true } : n,
+        ),
       );
     } catch (error) {
       console.error("Error marking notification as read:", error);
@@ -115,6 +136,33 @@ export default function MemberDashboard() {
     setMenuOpen(false);
   };
 
+    const PAGES = {
+    home: () => <HomePage user={user} sanghasName={sanghasName} />,
+    payments: () => <MyPayments />,
+    savings: () => <SanghaSavings />,
+    loans: () => <Loans />,
+    settings: () => <SettingsPage />,
+    sangha: () => <MySangha />,
+    notifications: () => (
+      <Notifications
+        notifications={notifications}
+        loading={notifLoading}
+        error={notifError}
+        markingId={markingId}
+        onRetry={fetchNotifications}
+        onMarkRead={handleMarkRead}
+      />
+    ),
+    profile: () => (
+      <section className="md-profile-page">
+        <ProfileWizard onBack={() => setPage("home")} />
+      </section>
+    ),
+  };
+
+  const renderPage = PAGES[page] ?? PAGES.home;
+
+
   return (
     <div className="md-shell">
       <header className="md-topbar">
@@ -127,39 +175,28 @@ export default function MemberDashboard() {
         </div>
 
         <nav className="md-navigation">
-          <button
-            type="button"
-            className={`md-navigation__item ${page === "home" ? "md-navigation__item--active" : ""}`}
-            onClick={() => handleNavigation("home")}
-          >
-            <House size={18} strokeWidth={2} />
-            <span>Home</span>
-          </button>
-
-          <button
-            type="button"
-            className={`md-navigation__item ${page === "sangha" ? "md-navigation__item--active" : ""}`}
-            onClick={() => handleNavigation("sangha")}
-          >
-            <Building2 size={18} strokeWidth={2} />
-            <span>My Sangha</span>
-          </button>
-
-          <button
-            type="button"
-            className={`md-navigation__item ${page === "notifications" ? "md-navigation__item--active" : ""}`}
-            onClick={() => handleNavigation("notifications")}
-          >
-            <span className="md-navigation__notification-icon">
-              <Bell size={18} strokeWidth={2} />
-              {unreadNotifications > 0 && (
-                <span className="md-notification-badge">
-                  {unreadNotifications > 9 ? "9+" : unreadNotifications}
+          {NAV_ITEMS.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              className={`md-navigation__item ${page === key ? "md-navigation__item--active" : ""}`}
+              onClick={() => handleNavigation(key)}
+            >
+              {key === "notifications" ? (
+                <span className="md-navigation__notification-icon">
+                  <Icon size={18} strokeWidth={2} />
+                  {unreadNotifications > 0 && (
+                    <span className="md-notification-badge">
+                      {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                    </span>
+                  )}
                 </span>
+              ) : (
+                <Icon size={18} strokeWidth={2} />
               )}
-            </span>
-            <span>Notifications</span>
-          </button>
+              <span>{label}</span>
+            </button>
+          ))}
         </nav>
 
         <div className="md-profile" ref={menuRef}>
@@ -169,22 +206,34 @@ export default function MemberDashboard() {
             onClick={() => setMenuOpen((value) => !value)}
           >
             <span className="md-avatar">{initials}</span>
-            <span className="md-profile__name">{user.fullname || "Member"}</span>
+            <span className="md-profile__name">
+              {user.fullname || "Member"}
+            </span>
             <ChevronDown size={16} className="md-profile__caret" />
           </button>
 
           {menuOpen && (
             <div className="md-profile__menu">
               <div className="md-profile__menu-header">
-                <div className="md-profile__menu-name">{user.fullname || "Member"}</div>
+                <div className="md-profile__menu-name">
+                  {user.fullname || "Member"}
+                </div>
                 <div className="md-profile__menu-email">{user.email || ""}</div>
               </div>
 
-              <button type="button" className="md-profile__menu-item" onClick={() => handleNavigation("profile")}>
+              <button
+                type="button"
+                className="md-profile__menu-item"
+                onClick={() => handleNavigation("profile")}
+              >
                 My Profile
               </button>
 
-              <button type="button" className="md-profile__menu-item" onClick={handleLogout}>
+              <button
+                type="button"
+                className="md-profile__menu-item"
+                onClick={handleLogout}
+              >
                 Logout
               </button>
             </div>
@@ -192,96 +241,7 @@ export default function MemberDashboard() {
         </div>
       </header>
 
-      <main className="md-content">
-        {page === "home" && (
-          <>
-            <section className="md-welcome">
-              <h1 className="md-welcome__title">
-                Welcome back, {(user.fullname || "Member").split(" ")[0]}
-              </h1>
-              <p className="md-welcome__subtitle">
-                Here's a quick look at your sangha membership.
-              </p>
-            </section>
-
-            <section className="md-cards">
-              <div className="md-card">
-                <div className="md-card__label">Membership Status</div>
-                <div className="md-card__value">Active</div>
-              </div>
-
-              <div className="md-card">
-                <div className="md-card__label">Sangha</div>
-                <div className="md-card__value">{sanghasName || "—"}</div>
-              </div>
-
-              <div className="md-card">
-                <div className="md-card__label">Role</div>
-                <div className="md-card__value">{user.role || "member"}</div>
-              </div>
-            </section>
-
-            <section className="md-panel">
-              <h2 className="md-panel__title">My Details</h2>
-              <div className="md-detail-grid">
-                <div className="md-detail">
-                  <span className="md-detail__label">Full Name</span>
-                  <span className="md-detail__value">{user.fullname || "-"}</span>
-                </div>
-
-                <div className="md-detail">
-                  <span className="md-detail__label">Email</span>
-                  <span className="md-detail__value">{user.email || "-"}</span>
-                </div>
-              </div>
-            </section>
-
-            <section className="md-panel">
-              <h2 className="md-panel__title">Membership Information</h2>
-              <div className="md-detail-grid">
-                <div className="md-detail">
-                  <span className="md-detail__label">Membership Status</span>
-                  <span className="md-detail__value">Active</span>
-                </div>
-
-                <div className="md-detail">
-                  <span className="md-detail__label">Member Role</span>
-                  <span className="md-detail__value">{user.role || "member"}</span>
-                </div>
-
-                <div className="md-detail">
-                  <span className="md-detail__label">Sangha</span>
-                  <span className="md-detail__value">{sanghasName || "—"}</span>
-                </div>
-
-                <div className="md-detail">
-                  <span className="md-detail__label">Member Since</span>
-                  <span className="md-detail__value">—</span>
-                </div>
-              </div>
-            </section>
-          </>
-        )}
-
-        {page === "sangha" && <MySangha />}
-
-        {page === "notifications" && (
-          <Notifications
-            notifications={notifications}
-            loading={notifLoading}
-            error={notifError}
-            markingId={markingId}
-            onRetry={fetchNotifications}
-            onMarkRead={handleMarkRead}
-          />
-        )}
-
-        {page === "profile" && (
-          <section className="md-profile-page">
-            <ProfileWizard onBack={() => setPage("home")} />
-          </section>
-        )}
-      </main>
+      <main className="md-content">{renderPage()}</main>
     </div>
   );
 }
