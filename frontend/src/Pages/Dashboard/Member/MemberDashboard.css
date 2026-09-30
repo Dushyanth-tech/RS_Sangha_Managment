@@ -789,7 +789,28 @@ body {
   color: var(--muted);
   margin-top: 8px;
 }
+.md-profile__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
 
+.md-profile__menu-item svg {
+  flex-shrink: 0;
+  color: #a52c66;
+}
+
+.md-profile__menu-divider {
+  height: 1px;
+  margin: 6px 0;
+  background: #f0e4eb;
+}
+
+.md-profile__menu-item--danger,
+.md-profile__menu-item--danger svg {
+  color: #b91c1c;
+}
 
 /* =========================================
    MOBILE
@@ -817,6 +838,8 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+
 
 
 /* =========================================

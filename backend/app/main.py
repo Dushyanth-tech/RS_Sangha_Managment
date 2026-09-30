@@ -2056,5 +2056,111 @@ def get_sangha_members(
         for member, bank in rows
     ]
 
+VERIFY_REQUEST_TITLE = "Account verification request"
+
+
+def _is_profile_complete(user) -> bool:
+    # Same fields your /superadmin/members list requires
+    return all([user.date_of_birth, user.address, user.id_proof_number_enc, user.pan_number_enc])
+
+
+def _is_banking_added(bank) -> bool:
+    return bool(bank) and all([
+        bank.account_holder_name, bank.bank_name, bank.account_type,
+        bank.ifsc_code, bank.branch_name, bank.account_number_enc,
+    ])
+
+
+def _has_pending_verification_request(db: Session, user) -> bool:
+    if user.isVerified:
+        return False
+    return (
+        db.query(Notification.id)
+        .filter(Notification.created_by == user.id, Notification.title == VERIFY_REQUEST_TITLE)
+        .first()
+        is not None
+    )
+
+
+@app.get("/me/account-status")
+def get_account_status(db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
+    user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    bank = db.query(BankDetails).filter(BankDetails.user_id == user.id).first()
+
+    sangha_name = None
+    if user.sangha_id:
+        sangha = db.query(Sanghas).filter(Sanghas.id == user.sangha_id).first()
+        sangha_name = sangha.name if sangha else None
+
+    profile_complete = _is_profile_complete(user)
+    banking_added = _is_banking_added(bank)
+
+    return {
+        "isActive": user.isActive is not False,
+        "isVerified": bool(user.isVerified),
+        "profileComplete": profile_complete,
+        "bankingAdded": banking_added,
+        "sanghaName": sangha_name,
+        "verificationRequested": _has_pending_verification_request(db, user),
+        "canRequestVerification": profile_complete and banking_added,
+    }
+
+
+@app.post("/me/verification-request")
+def request_account_verification(db: Session = Depends(get_db), current_user_id=Depends(get_current_user)):
+    user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if user.role != "member":
+        raise HTTPException(status_code=403, detail="Only members can request verification.")
+
+    if user.isVerified:
+        raise HTTPException(status_code=400, detail="Your account is already verified.")
+
+    if _has_pending_verification_request(db, user):
+        raise HTTPException(status_code=409, detail="A verification request is already pending.")
+
+    bank = db.query(BankDetails).filter(BankDetails.user_id == user.id).first()
+    if not (_is_profile_complete(user) and _is_banking_added(bank)):
+        raise HTTPException(
+            status_code=400,
+            detail="Please complete your profile and banking details before requesting verification.",
+        )
+
+    sangha_name = None
+    if user.sangha_id:
+        sangha = db.query(Sanghas).filter(Sanghas.id == user.sangha_id).first()
+        sangha_name = sangha.name if sangha else None
+
+    notification = Notification(
+        title=VERIFY_REQUEST_TITLE,
+        type="Announcement",
+        recipient="All Members",       # label only; delivery is via NotificationRecipient rows
+        sangha_ids=json.dumps([user.sangha_id]) if user.sangha_id else None,
+        message=(
+            f"{user.fullname} ({sangha_name or 'No Sangha'}) has requested verification "
+            f"of their account details.\n\n"
+            f"Please review and verify them from Manage Members."
+        ),
+        navigation_path=None,
+        status="Sent",
+        created_by=user.id,
+        sent_at=datetime.now(timezone.utc),
+    )
+    db.add(notification)
+    db.flush()
+
+    superadmin_ids = [row[0] for row in db.query(User.id).filter(User.role == "superadmin").all()]
+    for uid in superadmin_ids:
+        db.add(NotificationRecipient(notification_id=notification.id, user_id=uid))
+
+    db.commit()
+
+    return {"detail": "Verification request sent.", "verificationRequested": True}
+
 Base.metadata.create_all(bind=engine)
 

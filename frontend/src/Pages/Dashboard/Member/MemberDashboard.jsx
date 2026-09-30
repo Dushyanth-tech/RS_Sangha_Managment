@@ -9,6 +9,10 @@ import {
   Landmark,
   CreditCard,
   Settings,
+  User,
+  ShieldCheck,
+  LifeBuoy,
+  LogOut,
 } from "lucide-react";
 
 import "./MemberDashboard.css";
@@ -19,26 +23,27 @@ import MyPayments from "./pages/MyPayments";
 import SanghaSavings from "./pages/SanghaSavings";
 import Loans from "./pages/Loans";
 import SettingsPage from "./pages/SettingsPage";
+import HelpSupport from "./pages/HelpSupport";
 import Notifications from "./pages/Notifications";
+import AccountStatusModal from "./Modal/AccountStatusModal";
 
-  const NAV_ITEMS = [
-    { key: "home", label: "Home", icon: House },
-    { key: "sangha", label: "My Sangha", icon: Building2 },
-    { key: "payments", label: "My Payments", icon: Wallet },
-    { key: "savings", label: "Sangha Savings", icon: Landmark },
-    { key: "loans", label: "Loans", icon: CreditCard },
-    { key: "notifications", label: "Notifications", icon: Bell },
-    { key: "settings", label: "Settings", icon: Settings },
-  ];
+// Settings moved into the profile dropdown
+const NAV_ITEMS = [
+  { key: "home", label: "Home", icon: House },
+  { key: "sangha", label: "My Sangha", icon: Building2 },
+  { key: "payments", label: "My Payments", icon: Wallet },
+  { key: "savings", label: "Sangha Savings", icon: Landmark },
+  { key: "loans", label: "Loans", icon: CreditCard },
+  { key: "notifications", label: "Notifications", icon: Bell },
+];
 
 export default function MemberDashboard() {
-
   const [menuOpen, setMenuOpen] = useState(false);
   const [page, setPage] = useState("home");
   const [sanghasName, setSanghasName] = useState("");
+  const [showAccountStatus, setShowAccountStatus] = useState(false);
   const menuRef = useRef(null);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  
 
   // ================= NOTIFICATIONS =================
   // Lifted here (rather than living inside Notifications.jsx) because the
@@ -136,12 +141,18 @@ export default function MemberDashboard() {
     setMenuOpen(false);
   };
 
-    const PAGES = {
+  const openAccountStatus = () => {
+    setMenuOpen(false);
+    setShowAccountStatus(true);
+  };
+
+  const PAGES = {
     home: () => <HomePage user={user} sanghasName={sanghasName} />,
     payments: () => <MyPayments />,
     savings: () => <SanghaSavings />,
     loans: () => <Loans />,
     settings: () => <SettingsPage />,
+    help: () => <HelpSupport />,
     sangha: () => <MySangha />,
     notifications: () => (
       <Notifications
@@ -161,7 +172,6 @@ export default function MemberDashboard() {
   };
 
   const renderPage = PAGES[page] ?? PAGES.home;
-
 
   return (
     <div className="md-shell">
@@ -226,14 +236,45 @@ export default function MemberDashboard() {
                 className="md-profile__menu-item"
                 onClick={() => handleNavigation("profile")}
               >
+                <User size={16} />
                 My Profile
               </button>
 
               <button
                 type="button"
                 className="md-profile__menu-item"
+                onClick={() => handleNavigation("settings")}
+              >
+                <Settings size={16} />
+                Settings
+              </button>
+
+              <button
+                type="button"
+                className="md-profile__menu-item"
+                onClick={openAccountStatus}
+              >
+                <ShieldCheck size={16} />
+                Account Status
+              </button>
+
+              <button
+                type="button"
+                className="md-profile__menu-item"
+                onClick={() => handleNavigation("help")}
+              >
+                <LifeBuoy size={16} />
+                Help &amp; Support
+              </button>
+
+              <div className="md-profile__menu-divider" />
+
+              <button
+                type="button"
+                className="md-profile__menu-item md-profile__menu-item--danger"
                 onClick={handleLogout}
               >
+                <LogOut size={16} />
                 Logout
               </button>
             </div>
@@ -242,6 +283,16 @@ export default function MemberDashboard() {
       </header>
 
       <main className="md-content">{renderPage()}</main>
+
+      {showAccountStatus && (
+        <AccountStatusModal
+          onClose={() => setShowAccountStatus(false)}
+          onNavigate={(pageKey) => {
+            setShowAccountStatus(false);
+            handleNavigation(pageKey);
+          }}
+        />
+      )}
     </div>
   );
 }
