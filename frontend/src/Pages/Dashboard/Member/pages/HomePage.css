@@ -1,0 +1,378 @@
+/* ================= HOME PAGE ================= */
+
+.hp {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  font-family: var(--font-body);
+  color: var(--ink);
+}
+
+/* ---------- Welcome ---------- */
+.hp-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hp-welcome__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--primary-900);
+}
+
+.hp-welcome__subtitle {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.hp-loan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--primary-900);
+  color: #ffffff;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(55, 50, 118, 0.25);
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.hp-loan-btn:hover {
+  background: var(--primary-700);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(55, 50, 118, 0.3);
+}
+
+.hp-loan-btn:active {
+  transform: scale(0.98);
+}
+
+.hp-loan-btn:focus-visible {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 2px;
+}
+
+/* ---------- Error ---------- */
+.hp-error {
+  padding: 11px 14px;
+  border: 1px solid #f0c4cc;
+  border-radius: var(--radius-md);
+  background: #fbebee;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.hp-error button {
+  margin-left: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--danger);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---------- Four cards ---------- */
+.hp-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.hp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 4px 14px rgba(35, 37, 58, 0.04);
+}
+
+.hp-card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hp-card__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--surface-soft);
+  color: var(--primary-700);
+}
+
+.hp-card__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.hp-card__value {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--primary-900);
+  overflow-wrap: anywhere;
+}
+
+.hp-card__value--text {
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.hp-card__value--muted {
+  font-size: 18px;
+  color: var(--muted-light);
+}
+
+.hp-card__sub {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---------- My Sangha section ---------- */
+.hp-sangha {
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.hp-sangha__title {
+  margin: 0 0 16px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--primary-900);
+}
+
+.hp-sangha__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hp-sangha__name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.hp-sangha__code {
+  padding: 4px 12px;
+  border: 1px solid var(--accent-300);
+  border-radius: 999px;
+  background: var(--accent-100);
+  color: var(--accent-700);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.hp-sangha__details {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.hp-sangha__details > div {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: center;
+}
+
+.hp-sangha__details dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.hp-sangha__details dt svg {
+  color: var(--primary-600);
+}
+
+.hp-sangha__details dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.hp-sangha__sub {
+  margin: 18px 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary-800);
+}
+
+/* ---------- Members list ---------- */
+.hp-members {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.hp-members__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.hp-members__row:last-child {
+  border-bottom: none;
+}
+
+.hp-members__row--you {
+  background: var(--surface-soft);
+}
+
+.hp-members__row--you .hp-members__name {
+  font-weight: 700;
+  color: var(--primary-800);
+}
+
+.hp-members__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.hp-role {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hp-role--admin {
+  background: var(--accent-100);
+  color: var(--accent-700);
+}
+
+/* ---------- View all button ---------- */
+.hp-view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 10px 18px;
+  border: 1px solid var(--primary-500);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  color: var(--primary-700);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.hp-view-btn:hover {
+  background: var(--primary-700);
+  border-color: var(--primary-700);
+  color: #ffffff;
+}
+
+/* ---------- Empty / muted ---------- */
+.hp-muted {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.hp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 12px;
+  border: 1px dashed var(--line-dark);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  text-align: center;
+  color: var(--muted);
+}
+
+.hp-empty svg {
+  color: var(--primary-600);
+}
+
+.hp-empty strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.hp-empty p {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .hp-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .hp-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .hp-welcome__title {
+    font-size: 23px;
+  }
+
+  .hp-loan-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .hp-sangha {
+    padding: 18px;
+  }
+
+  .hp-sangha__details > div {
+    grid-template-columns: 105px 1fr;
+  }
+
+  .hp-view-btn {
+    width: 100%;
+  }
+}

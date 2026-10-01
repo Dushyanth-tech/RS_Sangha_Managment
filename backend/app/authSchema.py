@@ -1,7 +1,8 @@
 from datetime import date
 from enum import Enum
 from pydantic import BaseModel, EmailStr, field_validator, Field
-from typing import Optional
+from decimal import Decimal
+from typing import Literal
 import re
 
 
@@ -205,3 +206,23 @@ class SanghaSavingsAccountCreate(BaseModel):
     ifsc: str
     branch: str = Field(..., min_length=2)
     account_type: str = "Savings"
+
+class CibilUpdate(BaseModel):
+    score: int = Field(..., ge=300, le=900)
+
+class FundRequestCreate(BaseModel):
+    amount: Decimal = Field(..., gt=0, max_digits=12, decimal_places=2)
+    monthly_salary: Decimal = Field(..., gt=0, max_digits=12, decimal_places=2)
+    reason: str = Field(..., min_length=10, max_length=500)
+
+
+class FundRequestReview(BaseModel):
+    action: Literal["start_review", "approve", "reject"]
+    approved_amount: Decimal | None = Field(None, gt=0, max_digits=12, decimal_places=2)
+    reason: str | None = Field(None, max_length=255)
+
+
+class FundRepaymentCreate(BaseModel):
+    principal: Decimal = Field(..., ge=0, max_digits=12, decimal_places=2)
+    interest: Decimal = Field(0, ge=0, max_digits=12, decimal_places=2)
+    is_on_time: bool = True

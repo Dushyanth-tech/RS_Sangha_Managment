@@ -30,7 +30,6 @@ import AccountStatusModal from "./Modal/AccountStatusModal";
 // Settings moved into the profile dropdown
 const NAV_ITEMS = [
   { key: "home", label: "Home", icon: House },
-  { key: "sangha", label: "My Sangha", icon: Building2 },
   { key: "payments", label: "My Payments", icon: Wallet },
   { key: "savings", label: "Sangha Savings", icon: Landmark },
   { key: "loans", label: "Loans", icon: CreditCard },
@@ -147,7 +146,7 @@ export default function MemberDashboard() {
   };
 
   const PAGES = {
-    home: () => <HomePage user={user} sanghasName={sanghasName} />,
+    home: () => <HomePage user={user} onNavigate={handleNavigation} />,
     payments: () => <MyPayments />,
     savings: () => <SanghaSavings />,
     loans: () => <Loans />,

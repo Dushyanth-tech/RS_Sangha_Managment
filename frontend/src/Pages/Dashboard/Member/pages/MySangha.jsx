@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import api from "../../../../api/axiosInstance";
+import MembersModal from "../Modal/MembersModal";
 import "./MySangha.css";
 
 const MAX_MEMBERS = 20;
@@ -184,78 +185,13 @@ export default function MySangha() {
       )}
 
       {/* Members Modal */}
-      {selectedSangha && (
-        <div className="md-modal-overlay" onClick={handleCloseModal}>
-          <div
-            className="md-modal"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="md-modal__header">
-              <div>
-                <h2>{selectedSangha.name || "Sangha Members"}</h2>
-                <p>{selectedSangha.code || ""}</p>
-              </div>
-
-              <button
-                type="button"
-                className="md-modal__close"
-                onClick={handleCloseModal}
-                aria-label="Close modal"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="md-modal__body">
-              {membersLoading ? (
-                <div className="md-empty">
-                  <Loader2 size={28} className="md-loading-icon" />
-                  <p>Loading members...</p>
-                </div>
-              ) : membersError ? (
-                <div className="md-notif-error">{membersError}</div>
-              ) : members.length === 0 ? (
-                <div className="md-empty">
-                  <Users size={28} />
-                  <p>No members found.</p>
-                </div>
-              ) : (
-                <ol className="md-members-list">
-                  {members.map((member, index) => (
-                    <li
-                      key={member.id ?? index}
-                      className="md-member-list-item"
-                    >
-                      <div className="md-member-list-item__info">
-                        <strong>
-                          {member.name}
-                          {member.is_current_user && " (You)"}
-                        </strong>
-
-                        <span>
-                          {[member.address, member.city, member.state]
-                            .filter(Boolean)
-                            .join(", ") || "Address not available"}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-
-            <div className="md-modal__footer">
-              <button
-                type="button"
-                className="md-modal__done"
-                onClick={handleCloseModal}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <MembersModal
+  sangha={selectedSangha}
+  members={members}
+  loading={membersLoading}
+  error={membersError}
+  onClose={handleCloseModal}
+/>
     </section>
   );
 }

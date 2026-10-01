@@ -1,6 +1,10 @@
 import enum
 from datetime import datetime, date
-from sqlalchemy import Integer, String, ForeignKey, Boolean, Enum, DateTime, Text, func, Date, UniqueConstraint, LargeBinary
+from decimal import Decimal
+from sqlalchemy import (
+    Integer, String, ForeignKey, Boolean, Enum, DateTime, Text, func, Date,
+    UniqueConstraint, LargeBinary, Numeric, CheckConstraint, Index, text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.dbconnection import Base
 
@@ -75,6 +79,9 @@ class User(Base):
     creator: Mapped["User"] = relationship(remote_side=[id])
 
     sangha_id: Mapped[int | None] = mapped_column(ForeignKey("sanghas.id"), nullable=True)
+        # Entered by admin/superadmin from a real report. Never calculated here.
+    cibil_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cibil_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     sangha: Mapped["Sanghas"] = relationship(
         back_populates="members", foreign_keys=[sangha_id]
     )
@@ -92,8 +99,10 @@ class Sanghas(Base):
     membersCount: Mapped[int] = mapped_column(Integer, default=0)
 
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))            # superadmin or admin
-    admin_id: Mapped[int] = mapped_column(ForeignKey("users.id"))              # must have role=admin
+    admin_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)   # must have role=admin
     subadmin_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), unique=True, nullable=True)
+
+    admin: Mapped["User | None"] = relationship("User", foreign_keys=[admin_id])
 
     members: Mapped[list["User"]] = relationship(
         back_populates="sangha", foreign_keys="User.sangha_id"
@@ -265,3 +274,142 @@ class SanghaSavingsAccount(Base):
         "Sanghas",
         back_populates="savings_account",
     )
+
+class LoanStatus(str, enum.Enum):
+    pending = "Pending"        # member asked for a loan
+    approved = "Approved"      # approved, money not yet given
+    rejected = "Rejected"
+    disbursed = "Disbursed"    # money given: this is when debt starts
+    closed = "Closed"          # fully repaid
+
+
+class Loan(Base):
+    __tablename__ = "loans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    sangha_id: Mapped[int] = mapped_column(ForeignKey("sanghas.id"), index=True)
+
+    amount_requested: Mapped[float] = mapped_column(Numeric(12, 2))
+    amount_approved: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    status: Mapped[LoanStatus] = mapped_column(Enum(LoanStatus), default=LoanStatus.pending)
+    requested_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    disbursed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("amount_requested > 0", name="ck_loan_amount_positive"),
+    )
+
+
+class LoanRepayment(Base):
+    """Without this, debt could never go back down."""
+    __tablename__ = "loan_repayments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    loan_id: Mapped[int] = mapped_column(ForeignKey("loans.id"), index=True)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2))
+    paid_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    recorded_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_repayment_positive"),
+    )
+
+
+class VerificationRequest(Base):
+    __tablename__ = "verification_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    status: Mapped[RequestStatus] = mapped_column(Enum(RequestStatus), default=RequestStatus.pending)
+    requested_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # At most one pending request per member, enforced by the database
+    __table_args__ = (
+        Index(
+            "uq_one_pending_verification",
+            "user_id",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+
+class FundRequestStatus(str, enum.Enum):
+    pending = "Pending"
+    under_review = "Under Review"
+    approved = "Approved"
+    rejected = "Rejected"
+    disbursed = "Disbursed"
+    repaying = "Repaying"
+    completed = "Completed"
+
+
+class FundRequest(Base):
+    """Member emergency money request: Sangha Savings -> Member. NOT the Sangha bank loan."""
+    __tablename__ = "fund_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    sangha_id: Mapped[int] = mapped_column(ForeignKey("sanghas.id"), index=True)
+
+    amount_requested: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    amount_approved: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    monthly_salary: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    reason: Mapped[str] = mapped_column(Text)
+
+    status: Mapped[FundRequestStatus] = mapped_column(Enum(FundRequestStatus), default=FundRequestStatus.pending)
+    requested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    disbursed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("amount_requested > 0", name="ck_fund_request_amount_positive"),
+        # A member can have only one open request at a time (stops double submits at DB level)
+        Index(
+            "uq_one_open_fund_request", "member_id", unique=True,
+            postgresql_where=text("status IN ('pending','under_review','approved')"),
+        ),
+    )
+
+
+class FundRepayment(Base):
+    __tablename__ = "fund_repayments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("fund_requests.id"), index=True)
+    sangha_id: Mapped[int] = mapped_column(ForeignKey("sanghas.id"), index=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    principal: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    interest: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    is_on_time: Mapped[bool] = mapped_column(Boolean, default=True)
+    paid_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    recorded_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+
+    __table_args__ = (
+        CheckConstraint("principal >= 0 AND interest >= 0 AND principal + interest > 0", name="ck_fund_repayment_amount"),
+    )
+
+
+class FundTransaction(Base):
+    """Ledger of money movement. kind: disbursement | repayment | interest"""
+    __tablename__ = "fund_transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    sangha_id: Mapped[int] = mapped_column(ForeignKey("sanghas.id"), index=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("fund_requests.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

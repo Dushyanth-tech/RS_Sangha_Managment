@@ -201,7 +201,7 @@ export default function AccountStatusModal({ onClose, onNavigate }) {
             description: "You are not currently assigned to a Sangha.",
             action: {
               label: "View Sanghas",
-              onClick: () => goTo("sangha"),
+              onClick: () => goTo("home"),
             },
           },
     );
