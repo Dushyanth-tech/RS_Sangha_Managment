@@ -1,0 +1,261 @@
+/* ================= TOPBAR ================= */
+
+.tb {
+  --tb-navy-900: #071a3d;
+  --tb-navy: #0b2a5b;
+  --tb-royal: #1557c0;
+  --tb-bright: #1976f3;
+  --tb-light: #eaf4ff;
+  --tb-faint: #f5f9ff;
+  --tb-border: #cfe0f7;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--tb-border);
+  font-family: var(--font-body, "Inter", sans-serif);
+}
+
+.tb *,
+.tb *::before,
+.tb *::after {
+  box-sizing: border-box;
+}
+
+/* ---------- Search (the largest element) ---------- */
+.tb__search {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tb__search-icon {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  color: var(--tb-royal);
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.tb__search-input {
+  display: block;
+  width: 100%;
+  height: 44px;
+  padding: 0 14px 0 42px; /* left padding keeps text clear of the icon */
+  border: 1px solid var(--tb-border);
+  border-radius: 12px;
+  background: var(--tb-faint);
+  box-shadow: 0 1px 3px rgba(11, 42, 91, 0.06);
+  color: var(--tb-navy-900);
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.tb__search-input::placeholder {
+  color: #7b8fb2;
+  text-overflow: ellipsis;
+}
+
+.tb__search-input:focus {
+  border-color: var(--tb-bright);
+  background: #ffffff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(25, 118, 243, 0.18);
+}
+
+.tb__search:focus-within .tb__search-icon {
+  color: var(--tb-bright);
+}
+
+/* remove the browser's built-in clear "x" styling differences */
+.tb__search-input::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+
+/* ---------- Notification bell ---------- */
+.tb__bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--tb-navy);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.tb__bell:hover {
+  background: var(--tb-light);
+  color: var(--tb-royal);
+}
+
+.tb__badge {
+  position: absolute;
+  top: 5px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #d92d3a;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  box-sizing: content-box;
+}
+
+/* ---------- Profile ---------- */
+.tb__profile {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 10px;
+  padding: 4px 12px 4px 4px;
+  border: 1px solid var(--tb-border);
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.tb__avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--tb-royal), var(--tb-bright));
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.tb__name {
+  max-width: 140px;
+  overflow: hidden;
+  color: var(--tb-navy-900);
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Logout ---------- */
+.tb__logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--tb-royal);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--tb-royal);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.tb__logout:hover {
+  background: var(--tb-royal);
+  color: #ffffff;
+}
+
+.tb__logout-icon {
+  display: none;
+}
+
+.tb__bell:focus-visible,
+.tb__logout:focus-visible {
+  outline: 2px solid var(--tb-bright);
+  outline-offset: 2px;
+}
+
+/* ---------- Desktop: give the search room to be large ---------- */
+@media (min-width: 1024px) {
+  .tb {
+    gap: 14px;
+    padding: 12px 24px;
+  }
+
+  .tb__search-input {
+    height: 48px;
+    font-size: 15px;
+  }
+}
+
+/* ---------- Tablet: profile keeps its name, search shrinks ---------- */
+@media (max-width: 900px) {
+  .tb__name {
+    max-width: 100px;
+  }
+}
+
+/* ---------- Mobile: avatar only, Logout becomes an icon button ---------- */
+@media (max-width: 640px) {
+  .tb {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .tb__search-input {
+    padding-left: 38px;
+    font-size: 14px;
+  }
+
+  .tb__search-icon {
+    left: 12px;
+  }
+
+  .tb__name {
+    display: none;
+  }
+
+  .tb__profile {
+    padding: 3px;
+    border: none;
+  }
+
+  .tb__logout {
+    width: 44px;
+    padding: 0;
+  }
+
+  .tb__logout-icon {
+    display: block;
+  }
+
+  .tb__logout-text {
+    display: none;
+  }
+}
+
+/* ---------- Very small phones (320px) ---------- */
+@media (max-width: 360px) {
+  .tb__bell {
+    width: 40px;
+    height: 40px;
+  }
+
+  .tb__logout {
+    width: 40px;
+  }
+}

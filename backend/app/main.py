@@ -2215,9 +2215,9 @@ def get_member_home_summary(
     outstanding_debt = getattr(user, "outstanding_debt", None) or 0
 
     return {
-        "savings": savings,                        # None = no account created
-        "cibilScore": cibil_score,                 # None = not available
-        "outstandingDebt": float(outstanding_debt),
+        "savings": savings,
+        "cibilScore": user.cibil_score,
+        "outstandingDebt": float(_member_outstanding(db, user.id)),
     }
 
 @app.patch("/superadmin/members/{member_id}/cibil")
@@ -2720,6 +2720,8 @@ def create_fund_request(
     }
 
 
+
+
 # ---------------------------------------------------------------------
 # GET /sangha-savings/requests/{id}   (admin / superadmin review detail)
 # ---------------------------------------------------------------------
@@ -2803,9 +2805,12 @@ def review_fund_request(
 
         req.status = FundRequestStatus.approved
         req.amount_approved = amount
+                # approve branch
         _notify_user(
-            db, user.id, req.member_id, "Emergency money request approved",
-            f"Your request has been approved for ₹{amount:,.2f}. The amount will be credited to you shortly.",
+            db, user.id, req.member_id, "Fund Request Approved",
+            f"Your request for ₹{req.amount_requested:,.2f} has been approved.\n\n"
+            f"Approved Amount: ₹{amount:,.2f}\n"
+            f"Status: Approved",
             req.sangha_id,
         )
 
@@ -2817,9 +2822,12 @@ def review_fund_request(
             raise HTTPException(status_code=422, detail="Please give a reason for rejecting this request.")
         req.status = FundRequestStatus.rejected
         req.rejection_reason = reason
+                # reject branch
         _notify_user(
-            db, user.id, req.member_id, "Emergency money request rejected",
-            f"Your request was not approved. Reason: {reason}",
+            db, user.id, req.member_id, "Fund Request Rejected",
+            f"Your request for ₹{req.amount_requested:,.2f} was rejected.\n\n"
+            f"Reason: {reason}\n"
+            f"Status: Rejected",
             req.sangha_id,
         )
 
@@ -2921,6 +2929,83 @@ def record_fund_repayment(
     )
     db.commit()
     return {"detail": "Repayment recorded.", "status": req.status.value, "remaining": float(remaining)}
+
+def _inbox_query(db: Session, user: User):
+    """Requests this admin/superadmin may act on. Never includes the caller's own requests."""
+    if user.role not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Only admin and superadmin can view requests.")
+
+    q = (
+        db.query(FundRequest, Sanghas, User)
+        .join(Sanghas, Sanghas.id == FundRequest.sangha_id)
+        .join(User, User.id == FundRequest.member_id)
+        .filter(FundRequest.member_id != user.id)
+    )
+    if user.role == "admin":
+        q = q.filter(Sanghas.admin_id == user.id)   # only Sanghas they manage
+    return q
+
+@app.get("/sangha-savings/inbox/count")
+def get_request_inbox_count(
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    """Bell badge: only requests still waiting for a first review (status = pending)."""
+    user = _load_user(db, current_user_id)
+    count = _inbox_query(db, user).filter(FundRequest.status == FundRequestStatus.pending).count()
+    return {"count": count}
+
+
+@app.get("/sangha-savings/inbox")
+def get_request_inbox(
+    db: Session = Depends(get_db),
+    current_user_id=Depends(get_current_user),
+):
+    user = _load_user(db, current_user_id)
+    rows = (
+        _inbox_query(db, user)
+        .order_by(FundRequest.requested_at.desc(), FundRequest.id.desc())
+        .limit(200)
+        .all()
+    )
+
+    reviewer_ids = {r.reviewed_by for r, _, _ in rows if r.reviewed_by}
+    reviewers = {}
+    if reviewer_ids:
+        reviewers = dict(db.query(User.id, User.fullname).filter(User.id.in_(reviewer_ids)).all())
+
+    iso = lambda v: v.isoformat() if v else None  # noqa: E731
+
+    pending_count = (
+        _inbox_query(db, user).filter(FundRequest.status == FundRequestStatus.pending).count()
+    )
+
+    return {
+        "pendingCount": pending_count,
+        "items": [
+            {
+                "id": r.id,
+                "memberId": r.member_id,
+                "memberName": member.fullname,
+                "memberVerified": bool(member.isVerified),
+                "sanghaId": sangha.id,
+                "sanghaName": sangha.name,
+                "sanghaCode": sangha.code,
+                "amount": float(r.amount_requested),
+                "approvedAmount": float(r.amount_approved) if r.amount_approved is not None else None,
+                "monthlySalary": float(r.monthly_salary),
+                "reason": r.reason,
+                "status": r.status.value,
+                "requestedAt": iso(r.requested_at),
+                "reviewedBy": reviewers.get(r.reviewed_by),
+                "reviewedAt": iso(r.reviewed_at),
+                "rejectionReason": r.rejection_reason,
+                "disbursedAt": iso(r.disbursed_at),
+                "completedAt": iso(r.completed_at),
+            }
+            for r, sangha, member in rows
+        ],
+    }
 
 Base.metadata.create_all(bind=engine)
 
